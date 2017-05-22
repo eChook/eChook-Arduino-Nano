@@ -703,9 +703,9 @@ float thermistorADCToCelcius(int rawADC)
 
   // Steinhart-Hart Coefficients, see comment above
   // These coefficients are for the MF52AT NTC 10k thermistor, however due to thermistor tolerances each thermistor should be calibrated individually.
-  const float A = 0.001871300068;
-  const float B = 0.00009436080271;
-  const float C = 0.0000007954800125;
+  const float A = CAL_THERM_A;
+  const float B = CAL_THERM_B;
+  const float C = CAL_THERM_C;
 
   // Value of resistor forming potential divider with Thermistor in ohms.
   const int FIXED_RESISTOR_VALUE = 10000; //10k

@@ -108,11 +108,6 @@ const long    BT_BAUDRATE       = 115200;           // Baud Rate to run at. Must
 /* DATA TRANSMIT INTERVALS */
 const unsigned long     SHORT_DATA_TRANSMIT_INTERVAL     = 250;     // transmit interval in ms
 
-/* WHEEL & MOTOR SPEED */
-const unsigned long     WHEEL_MAGNETS                    = CAL_WHEEL_MAGENTS;       // Number of magnets on wheel for hall effect sensor
-const unsigned long     MOTOR_MAGNETS                    = CAL_MOTOR_MAGNETS;       // Number of magnets on motor shaft for hall effect sensor
-const double            WHEEL_CIRCUMFERENCE              = CAL_WHEEL_CIRCUMFERENCE;    // in meters -- wheel diameter = 420mm
-
 /* CURRENT */
 const int               AMPSENSOR_CAL_DELAY              = 3000;    // calibration delay for current sensor (ms)
 
@@ -120,7 +115,7 @@ const int               AMPSENSOR_CAL_DELAY              = 3000;    // calibrati
 
 
 /** ___________________________________________________________________________________________________ DATA IDENTIFIERS */
-/** see https://docs.google.com/a/jaguarlandrover.com/spreadsheets/d/1894rswb_CalcgParDVzyCzok7YSILqCtenP4maTdhaY/edit?usp=sharing
+/**
  *  If these are altered the data will no longer be read correctly by the phone.
  */
 
@@ -600,7 +595,7 @@ float readWheelSpeed() //wheelRPM is updated whenever this is called
   //Wheel RMP has been tacked into this function at a later date, so could do with re-writing really...
 
   //Wheel RMP Calculations:
-  wheelRPM = (float) tempWheelPoll / (float) WHEEL_MAGNETS; //gives number of rotations
+  wheelRPM = (float) tempWheelPoll / (float) CAL_WHEEL_MAGNETS; //gives number of rotations
 
   wheelRPM = wheelRPM / ((float)(tempWheelPollTime - tempLastWheelPollTime) / (float) 60000.0); // /60,000 converts millis to minutes
 
@@ -608,7 +603,7 @@ float readWheelSpeed() //wheelRPM is updated whenever this is called
 
   // Next task is to calculate the distance travelled. This is dome by takin the wheel poll, which is the number of magnets that have passed the sensor since the last check
   // and dividing it by the number of wheel magnets to give the number of revolutions, then multiply by the circumference to give distance travelled in meters:
-  float wheelDistanceTravelled =  (float) tempWheelPoll / (float) WHEEL_MAGNETS * (float) WHEEL_CIRCUMFERENCE;
+  float wheelDistanceTravelled =  (float) tempWheelPoll / (float) CAL_WHEEL_MAGNETS * (float) CAL_WHEEL_CIRCUMFERENCE;
 
   // Now determine how much time in seconds it took to travel this distance, and divide the distanve by time to get speed in meters per second.
 
@@ -655,7 +650,7 @@ float readMotorRPM()
 
   // Now calculate the number of revolutions of the motor shaft
 
-  float motorRevolutions = tempMotorPoll / MOTOR_MAGNETS;
+  float motorRevolutions = tempMotorPoll / CAL_MOTOR_MAGNETS;
   
   float motorRevolutionsPerMin = motorRevolutions * 60.0;
   

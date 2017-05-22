@@ -746,9 +746,6 @@ float thermistorADCToCelcius(int rawADC)
 
 }
 
-
-
-
 /** ================================== */
 /** BLUETOOTH DATA PACKETING FUNCTIONS */
 /** ================================== */
@@ -760,7 +757,6 @@ float thermistorADCToCelcius(int rawADC)
  * identifier:  see definitions at start of code
  * value:       the value to send (typically some caluclated value from a sensor)
 */
-
 
 void sendData(char identifier, float value)
 {
@@ -1108,7 +1104,6 @@ void waitForSerial(int timeOut)
   while (!Serial.available() && millis() < tempTime)
   {} //Do nothing - i.e. wait until serial becomes availble or the timeout is reached.
 }
-
 
 /** ================================== */
 /** INTERRUPT SERVICE ROUTINES         */

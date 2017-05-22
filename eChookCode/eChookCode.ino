@@ -98,7 +98,7 @@ const char TEMP3_ID            = 'c';
 const char LAUNCH_MODE_ID      = 'L';
 const char CYCLE_VIEW_ID       = 'C';
 const char GEAR_RATIO_ID       = 'r';
-const char BRAKE_PRESSED_ID; //Not defined yet
+const char BRAKE_PRESSED_ID    = 'w';
 
 
 /** ================================== */

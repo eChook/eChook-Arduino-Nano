@@ -25,7 +25,3 @@ const float    CAL_WHEEL_CIRCUMFERENCE  = 1.178; //Outer circumference of tyre, 
 const float CAL_BATTERY_TOTAL   = 6.15; 
 const float CAL_BATTERY_LOWER   = 3.071;
 const float CAL_CURRENT         = 37.55;
-
-const float CAL_THERM_A = 0.001871300068;
-const float CAL_THERM_B = 0.00009436080271;
-const float CAL_THERM_C = 0.0000007954800125;

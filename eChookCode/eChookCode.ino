@@ -55,6 +55,7 @@
 
 #include <math.h>
 #include <Bounce2.h>
+#include "Calibration.h"
 
 /** ================================== */
 /** COMPILER DEFINITIONS               */
@@ -65,13 +66,6 @@
 /** BUILD OPTIONS                      */
 /** ================================== */
 const int DEBUG_MODE = 0; //if debug mode is on, no data will be sent via bluetooth. This is to make any debug messages easier to see.
-
-
-/** ================================== */
-/** BOARD CALIBRATION                  */
-/** ================================== */
-const float REFERENCE_VOLTAGE = 5; //This is the analog reference voltage, i.e. the voltage from the DCDC that the board is actually running at
-
 
 /** ================================== */
 /** CONSTANTS                          */
@@ -103,9 +97,9 @@ const int   FAN_OUT_PIN         = 11;  // PWM output to the fan(s)
 
 /** ________________________________________________________________________________________ BLUETOOTH CONSTANTS */
 /* BLUETOOTH SETUP PARAMETERS */
-const String  BT_NAME           = "eChook";   // Name of the bluetooth module to appear on phone
-const String  BT_PASSWORD       = "1234";         // Pairing Password
-const long    BT_BAUDRATE       = 115200;         // Baud Rate to run at. Must match Arduino's baud rate.
+const String  BT_NAME           = CAL_BT_NAME;      // Name of the bluetooth module to appear on phone
+const String  BT_PASSWORD       = CAL_BT_PASSWORD;  // Pairing Password
+const long    BT_BAUDRATE       = 115200;           // Baud Rate to run at. Must match Arduino's baud rate.
 
 //Bluetooth module uses hardware serial from Arduino, so Arduino Tx -> HC05 Rx, Ard Rx -> HC Tx. EN and Status are disconnected.
 
@@ -115,9 +109,9 @@ const long    BT_BAUDRATE       = 115200;         // Baud Rate to run at. Must m
 const unsigned long     SHORT_DATA_TRANSMIT_INTERVAL     = 250;     // transmit interval in ms
 
 /* WHEEL & MOTOR SPEED */
-const unsigned long     WHEEL_MAGNETS                    = 5;       // Number of magnets on wheel for hall effect sensor
-const unsigned long     MOTOR_MAGNETS                    = 6;       // Number of magnets on motor shaft for hall effect sensor
-const double            WHEEL_CIRCUMFERENCE              = 1.178;    // in meters -- wheel diameter = 420mm
+const unsigned long     WHEEL_MAGNETS                    = CAL_WHEEL_MAGENTS;       // Number of magnets on wheel for hall effect sensor
+const unsigned long     MOTOR_MAGNETS                    = CAL_MOTOR_MAGNETS;       // Number of magnets on motor shaft for hall effect sensor
+const double            WHEEL_CIRCUMFERENCE              = CAL_WHEEL_CIRCUMFERENCE;    // in meters -- wheel diameter = 420mm
 
 /* CURRENT */
 const int               AMPSENSOR_CAL_DELAY              = 3000;    // calibration delay for current sensor (ms)
@@ -158,11 +152,6 @@ int             currentAvgLoopCount         = 0;    //Counter for current loop a
 int       	  	loopCounter              		= 0;
 
 
-/** ___________________________________________________________________________________________________ FILTERING VARIABLES */
-int           currentPast            = 0;
-float         currentAlpha           = 0.8;
-
-
 /** ___________________________________________________________________________________________________ INTERRUPT VERIABLES */
 /** Any variables that are being used in an Interrupt Service Routine need to be declared as volatile. This ensures
  *  that each time the variable is accessed it is the master copy in RAM rather than a cached version within the CPU.
@@ -179,9 +168,9 @@ volatile unsigned long fanPoll        = 0;
 Bounce launchButtonDebounce = Bounce();
 Bounce cycleButtonDebounce  = Bounce();
 Bounce brakeButtonDebounce  = Bounce();
-int cycleButtonPrevious = LOW; // Track state so that a button press can be acted upon once
-  int launchButtonPrevious = LOW; // Track state so that a button press can be acted upon once
-  int brakeButtonPrevious = LOW; // Track state so that a button press can be acted upon once
+int cycleButtonPrevious   = LOW; // Track state so that a button press can be acted upon once
+int launchButtonPrevious  = LOW; // Track state so that a button press can be acted upon once
+int brakeButtonPrevious   = LOW; // Track state so that a button press can be acted upon once
 
 
 /** ___________________________________________________________________________________________________ Sensor Readings */
@@ -246,7 +235,7 @@ void setup()
   pinMode(LED_1_OUT_PIN,        OUTPUT);
   pinMode(LED_2_OUT_PIN,        OUTPUT);
 
-  pinMode(VBATT_IN_PIN,     	INPUT);
+  pinMode(VBATT_IN_PIN,     	  INPUT);
   pinMode(VBATT1_IN_PIN,      	INPUT);
   pinMode(THROTTLE_IN_PIN,    	INPUT);
   pinMode(AMPS_IN_PIN,        	INPUT);
@@ -468,9 +457,9 @@ float readVoltageTotal()
 {
   float tempVoltage = analogRead(VBATT_IN_PIN); //this will give a 10 bit value of the voltage with 1024 representing the ADC reference voltage of 5V
 
-  tempVoltage = (tempVoltage / 1024) * REFERENCE_VOLTAGE; //This gives the actual voltage seen at the arduino pin, assuming reference voltage of 5v
+  tempVoltage = (tempVoltage / 1024) * CAL_REFERENCE_VOLTAGE; //This gives the actual voltage seen at the arduino pin, assuming reference voltage of 5v
 
-  tempVoltage = tempVoltage * 6.15; //Gives battery voltage where 6 is the division ratio of the potential divider. NEEDS TUNING!!
+  tempVoltage = tempVoltage * CAL_BATTERY_TOTAL; //Gives battery voltage where 6 is the division ratio of the potential divider. NEEDS TUNING!!
 
   return (tempVoltage);
 }
@@ -479,9 +468,9 @@ float readVoltageLower()
 {
   float tempVoltage = analogRead(VBATT1_IN_PIN); //this will give a 10 bit value of the voltage with 1024 representing the ADC reference voltage of 5V
 
-  tempVoltage = (tempVoltage / 1024) * REFERENCE_VOLTAGE; //This gives the actual voltage seen at the arduino pin, assuming reference voltage of 5v
+  tempVoltage = (tempVoltage / 1024) * CAL_REFERENCE_VOLTAGE; //This gives the actual voltage seen at the arduino pin, assuming reference voltage of 5v
 
-  tempVoltage = tempVoltage * 3.071f; //Gives battery voltage where 3 is the division ratio of the potential divider. NEEDS TUNING!!
+  tempVoltage = tempVoltage * CAL_BATTERY_LOWER; //Gives battery voltage where 3 is the division ratio of the potential divider. NEEDS TUNING!!
 
   return (tempVoltage);
 }
@@ -490,9 +479,9 @@ float readCurrent()
 {
   float tempCurrent = analogRead(AMPS_IN_PIN);
 
-  tempCurrent = (tempCurrent / 1024) * REFERENCE_VOLTAGE; //gives voltage output of current sensor.
+  tempCurrent = (tempCurrent / 1024) * CAL_REFERENCE_VOLTAGE; //gives voltage output of current sensor.
 
-  tempCurrent = tempCurrent * 37.55; //calibration value for LEM current sensor on eChook board.
+  tempCurrent = tempCurrent * CAL_CURRENT; //calibration value for LEM current sensor on eChook board.
 
   currentSmoothingArray[currentSmoothingCount] = tempCurrent; //updates array with latest value
 
@@ -527,7 +516,7 @@ int readThrottle() //This function is for a variable Throttle input
 
 
 
-  tempThrottle = (tempThrottle / 1023) * REFERENCE_VOLTAGE; // Gives the actual voltage seen on the arduino Pin, assuming reference voltage of 5V
+  tempThrottle = (tempThrottle / 1023) * CAL_REFERENCE_VOLTAGE; // Gives the actual voltage seen on the arduino Pin, assuming reference voltage of 5V
 
   if (tempThrottle < 1) //less than 1V
   {
@@ -535,10 +524,10 @@ int readThrottle() //This function is for a variable Throttle input
   }
   else if (tempThrottle > 4)  //greater than 4 V
   {
-    tempThrottle = REFERENCE_VOLTAGE;
+    tempThrottle = CAL_REFERENCE_VOLTAGE;
   }
 
-  tempThrottle = (tempThrottle / REFERENCE_VOLTAGE) * 100; // Gives throttle as a percentage
+  tempThrottle = (tempThrottle / CAL_REFERENCE_VOLTAGE) * 100; // Gives throttle as a percentage
 
 
   analogWrite(MOTOR_OUT_PIN, map((int)tempThrottle, 0, 100, 0, 255)); //This drives the motor output. Unless you are using the board to drive your motor, comment it out.

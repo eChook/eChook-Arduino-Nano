@@ -90,6 +90,7 @@ const char SPEED_ID            = 's';
 const char MOTOR_ID            = 'm';
 const char CURRENT_ID          = 'i';
 const char VOLTAGE_ID          = 'v';
+const char VOLTAGE_LOWER_ID    = 'w';
 const char THROTTLE_INPUT_ID   = 't';
 const char THROTTLE_ACTUAL_ID  = 'd';
 const char TEMP1_ID            = 'a';
@@ -98,7 +99,7 @@ const char TEMP3_ID            = 'c';
 const char LAUNCH_MODE_ID      = 'L';
 const char CYCLE_VIEW_ID       = 'C';
 const char GEAR_RATIO_ID       = 'r';
-const char BRAKE_PRESSED_ID    = 'w';
+const char BRAKE_PRESSED_ID    = 'B';
 
 
 /** ================================== */
@@ -307,7 +308,8 @@ void loop()
     batteryVoltageTotal = readVoltageTotal();
     sendData(VOLTAGE_ID, batteryVoltageTotal);
 
-    //batteryVoltageLower = readVoltageLower(); //As of version 1.7 the app does not support this variable yet.
+    batteryVoltageLower = readVoltageLower();
+    sendData(VOLTAGE_LOWER_ID, batteryVoltageLower);
 
     current = readCurrent();
     sendData(CURRENT_ID, current);
@@ -867,6 +869,8 @@ int checkBtAtMode() //Checks if the HC-05 Bluetooth module is in AT mode. Return
   int atMode = 0;
 
   Serial.begin(38400); //AT mode baud rate
+
+  delay(50);
 
   Serial.println("AT"); // for some reason when AT is sent the first time, an error is always returned.
 

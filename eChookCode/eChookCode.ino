@@ -398,11 +398,11 @@ void buttonChecks()
   {
     if(brakeButtonState == HIGH) //Button Pressed
     {
-      //sendData(BRAKE_PRESSED_ID, 1); //Disabled until supported by app ***
+      sendData(BRAKE_PRESSED_ID, 100); 
     }
     else if(brakeButtonState == LOW) //Button Released
     {
-     // sendData(BRAKE_PRESSED_ID, 0);
+     sendData(BRAKE_PRESSED_ID, 0);
     }
 
     brakeButtonPrevious = brakeButtonState; //Update previous state

@@ -315,7 +315,7 @@ void loop()
     sendData(CURRENT_ID, current);
 
 
-    sendData(THROTTLE_ACTUAL_ID, throttle);
+    sendData(THROTTLE_INPUT_ID, throttle);
    
 
 

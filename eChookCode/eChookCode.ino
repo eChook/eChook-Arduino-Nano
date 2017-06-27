@@ -870,27 +870,29 @@ int checkBtAtMode() //Checks if the HC-05 Bluetooth module is in AT mode. Return
 
   Serial.begin(38400); //AT mode baud rate
 
-  delay(50);
+  while(!Serial){} //Wait for serial to initialise
 
-  Serial.println("AT"); // for some reason when AT is sent the first time, an error is always returned.
+  delay(200);
 
-  delay(50); //wait for response
+  Serial.print("AT\r\n"); // for some reason when AT is sent the first time, an error is always returned.
+
+  delay(200); //wait for response
 
   //    Serial.flush(); // Flush the response to the first AT query
   flushSerial();
 
-  //    while (Serial.available()) // to check if the flush worked
-  //    {
-  //      Serial.println((char)Serial.read());
-  //    }
+  while (Serial.available()) // to check if the flush worked
+  {
+    Serial.println((char)Serial.read());
+  }
 
   //Serial.println("End of flush check");
   Serial.println("AT");
 
-  delay(50);
+  delay(200);
 
   char tempOne = (char)Serial.read();
-  delay(10);
+  delay(20);
   char tempTwo = (char)Serial.read();
 
   if (tempOne == 'O' && tempTwo == 'K') //Was the response "OK"?
@@ -930,8 +932,8 @@ void configureBluetooth()
 
   flushSerial();// Flush the buffer. Not entirely sure what is in there to flush at this point, but it is needed!
   Serial.print("AT+NAME=");
-  Serial.println(BT_NAME);
-  //  Serial.print("\r\n");
+  Serial.print(BT_NAME);
+  Serial.print("\r\n");
 
   //Now Check Response
 
@@ -994,32 +996,32 @@ void configureBluetooth()
   }
 
 
-  //Set Password_____________________________________________ Not working - leaving for now
+//Set Password_____________________________________________ Not working - leaving for now
 
-  //  flushSerial();
-  //  Serial.print("AT+PSWD="); //command to change Password
-  //  //  Serial.println(BT_PASSWORD);
-  //  Serial.println("1234");
-  //  //  Serial.print("\r\n");
-  //
-  //  waitForSerial(500);
-  //
-  //  tempOne = (char)Serial.read();
-  //
-  //  waitForSerial(500);
-  //
-  //  tempTwo = (char)Serial.read();
-  //
-  //
-  //  if (tempOne == 'O' && tempTwo == 'K') //Was the response "OK"?
-  //  {
-  //    Serial.println("Password Set");
-  //    btPasswordSet = 1;
-  //  }
-  //  else
-  //  {
-  //    Serial.println("Password Not Set");
-  //  }
+//    flushSerial();
+//    Serial.print("AT+PSWD="); //command to change Password
+//    //  Serial.println(BT_PASSWORD);
+//    Serial.print("1234");
+//    Serial.print("\r\n");
+//  
+//    waitForSerial(1000);
+//  
+//    tempOne = (char)Serial.read();
+//  
+//    waitForSerial(500);
+//  
+//    tempTwo = (char)Serial.read();
+//  
+//  
+//    if (tempOne == 'O' && tempTwo == 'K') //Was the response "OK"?
+//    {
+//      Serial.println("Password Set");
+//      btPasswordSet = 1;
+//    }
+//    else
+//    {
+//      Serial.println("Password Not Set");
+//    }
 
 
   // Check all operations completed successfully

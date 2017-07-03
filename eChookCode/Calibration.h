@@ -18,8 +18,8 @@ const String CAL_BT_PASSWORD = "1234"; // Changing password from default "1234" 
 
 // Car Specific Settings
 
-const int       CAL_WHEEL_MAGNETS        = 5; //Number of magnets on wheel
-const int       CAL_MOTOR_MAGNETS        = 6; // Number of magnets on motor shaft for hall effect sensor
+const int       CAL_WHEEL_MAGNETS        = 6; //Number of magnets on wheel
+const int       CAL_MOTOR_MAGNETS        = 3; // Number of magnets on motor shaft for hall effect sensor
 const float     CAL_WHEEL_CIRCUMFERENCE  = 1.178; //Outer circumference of tyre, in Meters. i.e. the distance travelled in one revolution
 
 //Board Specific Calibrations

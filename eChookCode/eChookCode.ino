@@ -578,13 +578,9 @@ float readWheelSpeed() //wheelRPM is updated whenever this is called
 
   float wheelSpeedMetersPerSecond = wheelDistanceTravelled / ((float)(tempWheelPollTime - tempLastWheelPollTime) / (float)1000.0); // the /1000 converts the milliseconds to seconds
 
-  // Finally convert meter per second into Miles per Hour by multiplying by 2.2369:
-
-  float wheelSpeedMPH = wheelSpeedMetersPerSecond * 2.2369; // 1m/s = 2.2369MPH
-
   //Next section of code handles the smooting:
 
-  speedSmoothingArray[speedSmoothingCount] = wheelSpeedMPH; //adds current speed into oldest position in array
+  speedSmoothingArray[speedSmoothingCount] = wheelSpeedMetersPerSecond; //adds current speed into oldest position in array
 
   speedSmoothingCount ++ ; //incrememnts array position for next reading
 
@@ -593,16 +589,16 @@ float readWheelSpeed() //wheelRPM is updated whenever this is called
     speedSmoothingCount = 0; //reset if count exceeds array length
   }
 
-  wheelSpeedMPH = 0; //reset variable ready to sum array
+  wheelSpeedMetersPerSecond = 0; //reset variable ready to sum array
 
   for (int i = 0; i < speedSmoothingSetting; i++)
   {
-    wheelSpeedMPH = speedSmoothingArray[i];
+    wheelSpeedMetersPerSecond = speedSmoothingArray[i];
   }
 
-  wheelSpeedMPH = wheelSpeedMPH / speedSmoothingSetting; //divide summed figure by array count to get mean value
+  wheelSpeedMetersPerSecond = wheelSpeedMetersPerSecond / speedSmoothingSetting; //divide summed figure by array count to get mean value
 
-  return (wheelSpeedMPH); //return smoothed value
+  return (wheelSpeedMetersPerSecond); //return smoothed value
 }
 
 float readMotorRPM()

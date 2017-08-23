@@ -1,9 +1,7 @@
-Code for the eChook Nano Telemetry board.
-
-Further documentation here: https://drive.google.com/open?id=12MMUZwj4w5DUC1TnJMnzvs-AOBMiBQhTdfGyMm6rY0o
-
-NOTE: If you are updating your code, ensure you have your calibration.h file backed up - don't overwrite it with our settings!
-
-Dependancies:
-Bounce2 Library - https://github.com/thomasfredericks/Bounce2
-    > Handles debouncing of the Launch Mode, Cycle View and Braking Signal
+# eChookNano
+A project that records telemertry about your F24 or F24+ race car!
+## Documentation
+The main documentation is hosted on a [Google Document](https://drive.google.com/open?id=12MMUZwj4w5DUC1TnJMnzvs-AOBMiBQhTdfGyMm6rY0o). 
+## Usage
+To run this code you will require the [Bounce2](https://github.com/thomasfredericks/Bounce2) library.  
+If you are updating to the new code please ensure your `Calibration.h` file is backedup. Enjoy :)

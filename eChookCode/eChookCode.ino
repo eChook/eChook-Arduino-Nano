@@ -41,6 +41,7 @@ const int DEBUG_MODE = 0; //if debug mode is on, no data will be sent via blueto
 /** ================================== */
 const bool ENABLE_LCD_DISPLAY = false; // allows enabling or disabling of the I2C
 LiquidCrystal_I2C lcd(0x27, 16, 4); // 16,4 LCD. Use a I2C finder to find the address; although they are often are 0x27
+const String LCD_FIRST_LINE = "DGS Racing"; // this is the first line that will always be displayed, change this to whatever 
 
 
 /** ================================== */
@@ -368,6 +369,8 @@ void loop()
       digitalWrite(6, LOW);
     }
 
+    printToLCD();  
+
   }
 
 
@@ -420,6 +423,18 @@ void buttonChecks()
     brakeButtonPrevious = brakeButtonState; //Update previous state
   }
 
+}
+
+void printToLCD() {
+  float tempVoltage = round(batteryVoltageTotal*10)/10; 
+  float tempAmperage = round(current*10)/10;
+  float tempTemp1 = round(tempOne*10)/10;
+  float tempTemp2 = round(tempTwo*10)/10;
+  float tempWheelSpeed = round(wheelSpeed*10)/10;
+  float tempWheelRPM = round(wheelRPM*10)/10;
+  
+  lcd.print(LCD_FIRST_LINE);
+  
 }
 
 /**

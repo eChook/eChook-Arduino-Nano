@@ -33,6 +33,7 @@
 /** BUILD OPTIONS                      */
 /** ================================== */
 const int DEBUG_MODE = 0; //if debug mode is on, no data will be sent via bluetooth. This is to make any debug messages easier to see.
+const bool ENABLE_LCD_DISPLAY = false; // allows enabling or disabling of the I2C
 
 /** ================================== */
 /** CONSTANTS                          */

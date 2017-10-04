@@ -22,6 +22,8 @@
 
 #include <math.h>
 #include <Bounce2.h>
+#include <Wire.h>
+#include <LiquidCrystal_I2C.h>
 #include "Calibration.h"
 
 /** ================================== */
@@ -33,7 +35,13 @@
 /** BUILD OPTIONS                      */
 /** ================================== */
 const int DEBUG_MODE = 0; //if debug mode is on, no data will be sent via bluetooth. This is to make any debug messages easier to see.
+
+/** ================================== */
+/** LCD CONFIGURATION                  */
+/** ================================== */
 const bool ENABLE_LCD_DISPLAY = false; // allows enabling or disabling of the I2C
+LiquidCrystal_I2C lcd(0x27, 16, 4); // 16,4 LCD. Use a I2C finder to find the address; although they are often are 0x27
+
 
 /** ================================== */
 /** CONSTANTS                          */
@@ -210,6 +218,9 @@ void setup()
   pinMode(LAUNCH_BTN_IN_PIN,    INPUT_PULLUP);
   pinMode(CYCLE_BTN_IN_PIN,     INPUT_PULLUP);
   pinMode(BRAKE_IN_PIN,         INPUT_PULLUP);  //input type will depend on implementation of brake light
+
+  lcd.begin();
+  lcd.backlight();
 
   /**
      Set up Interrupts:

@@ -369,8 +369,9 @@ void loop()
       digitalWrite(6, LOW);
     }
 
-    printToLCD();  
-
+    if (ENABLE_LCD_DISPLAY) {
+      printToLCD();  
+    }
   }
 
 

@@ -434,14 +434,22 @@ void printToLCD() {
   String tempTemp2 = String(round(tempTwo*10)/10);
   String tempWheelSpeed = String((round(wheelSpeed*10)/10)*3.6); // *3.6 to kmph
   String tempWheelRPM = String(round(wheelRPM*10)/10);
-  
-  lcd.print(LCD_FIRST_LINE);
-  lcd.setCursor(0,1);
-  lcd.print(tempVoltage + "V    " + tempAmperage + "A");
-  lcd.setCursor(0,2);
-  lcd.print(tempTemp1 + "C    " + tempTemp2 + "C");
-  lcd.setCursor(0,3);
-  lcd.print(tempWheelSpeed + "KMPH " + tempWheelRPM + "?");
+
+  if (LCD_HAS_FOUR_LINES) {
+    lcd.setCursor(0,0);
+    lcd.print(LCD_FIRST_LINE);
+    lcd.setCursor(0,1);
+    lcd.print(tempVoltage + "V    " + tempAmperage + "A");
+    lcd.setCursor(0,2);
+    lcd.print(tempTemp1 + "C    " + tempTemp2 + "C");
+    lcd.setCursor(0,3);
+    lcd.print(tempWheelSpeed + "KMPH " + tempWheelRPM + "?");
+  } else {
+    lcd.setCursor(0,0);
+    lcd.print(tempVoltage + "V    " + tempAmperage + "A");
+    lcd.setCursor(0,1);
+    lcd.print(tempWheelSpeed + "KMPH " + tempTemp1 + "C");
+  }
 }
 
 /**

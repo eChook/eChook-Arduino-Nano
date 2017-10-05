@@ -39,7 +39,7 @@ const int DEBUG_MODE = 0; //if debug mode is on, no data will be sent via blueto
 /** ================================== */
 /** LCD CONFIGURATION                  */
 /** ================================== */
-const bool ENABLE_LCD_DISPLAY = false; // allows enabling or disabling of the I2C
+const bool ENABLE_LCD_DISPLAY = true; // allows enabling or disabling of the I2C
 LiquidCrystal_I2C lcd(0x27, 16, 4); // 16,4 LCD. Use a I2C finder to find the address; although they are often are 0x27
 const String LCD_FIRST_LINE = "DGS Racing"; // this is the first line that will always be displayed, change this to whatever 
 
@@ -48,12 +48,12 @@ const String LCD_FIRST_LINE = "DGS Racing"; // this is the first line that will 
 /** CONSTANTS                          */
 /** ================================== */
 /** ___________________________________________________________________________________________________ ANALOG INPUT PINS */
-const int   VBATT_IN_PIN        = A0;  // Analog input pin for battery voltage
-const int   AMPS_IN_PIN         = A2;  // Analog input pin for current draw
-const int   THROTTLE_IN_PIN     = A3;  // Analog input pin for the throttle
-const int   TEMP1_IN_PIN        = A5;  // Analog input pin for temp sensor 1
-const int   TEMP2_IN_PIN        = A4;  // Analog input pin for temp sensor 2
-const int   VBATT1_IN_PIN       = A7;  // Analog input pin for the lower battery voltage (battery between ground and 12V)
+const int   VBATT_IN_PIN  = A0;  // Analog input pin for battery voltage
+const int   AMPS_IN_PIN = A2;  // Analog input pin for current draw
+const int   THROTTLE_IN_PIN = A3;  // Analog input pin for the throttle
+const int   TEMP1_IN_PIN = A5;  // Analog input pin for temp sensor 1
+const int   TEMP2_IN_PIN = A4;  // Analog input pin for temp sensor 2
+const int   VBATT1_IN_PIN = A7;  // Analog input pin for the lower battery voltage (battery between ground and 12V)
 
 /** ___________________________________________________________________________________________________ DIGITAL INPUT PINS */
 const int   BRAKE_IN_PIN        = 7;    // Digital input pin for launch mode button

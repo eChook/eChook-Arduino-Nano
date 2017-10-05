@@ -22,6 +22,8 @@
 
 #include <math.h>
 #include <Bounce2.h>
+#include <Wire.h>
+#include <LiquidCrystal_I2C.h>
 #include "Calibration.h"
 
 /** ================================== */
@@ -35,15 +37,24 @@
 const int DEBUG_MODE = 0; //if debug mode is on, no data will be sent via bluetooth. This is to make any debug messages easier to see.
 
 /** ================================== */
+/** LCD CONFIGURATION                  */
+/** ================================== */
+const bool ENABLE_LCD_DISPLAY = true; // allows enabling or disabling of the I2C
+const bool LCD_HAS_FOUR_LINES = true; // does the LCD have 4 lines, if this is set to false I will assume it only has two
+LiquidCrystal_I2C lcd(0x27, 16, 4); // 16,4 LCD. Use a I2C finder to find the address; although they are often are 0x27
+const String LCD_FIRST_LINE = "DGS Racing"; // this is the first line that will always be displayed, change this to whatever 
+
+
+/** ================================== */
 /** CONSTANTS                          */
 /** ================================== */
 /** ___________________________________________________________________________________________________ ANALOG INPUT PINS */
-const int   VBATT_IN_PIN        = A0;  // Analog input pin for battery voltage
-const int   AMPS_IN_PIN         = A2;  // Analog input pin for current draw
-const int   THROTTLE_IN_PIN     = A3;  // Analog input pin for the throttle
-const int   TEMP1_IN_PIN        = A5;  // Analog input pin for temp sensor 1
-const int   TEMP2_IN_PIN        = A4;  // Analog input pin for temp sensor 2
-const int   VBATT1_IN_PIN       = A7;  // Analog input pin for the lower battery voltage (battery between ground and 12V)
+const int   VBATT_IN_PIN  = A0;  // Analog input pin for battery voltage
+const int   AMPS_IN_PIN = A2;  // Analog input pin for current draw
+const int   THROTTLE_IN_PIN = A3;  // Analog input pin for the throttle
+const int   TEMP1_IN_PIN = A5;  // Analog input pin for temp sensor 1
+const int   TEMP2_IN_PIN = A4;  // Analog input pin for temp sensor 2
+const int   VBATT1_IN_PIN = A7;  // Analog input pin for the lower battery voltage (battery between ground and 12V)
 
 /** ___________________________________________________________________________________________________ DIGITAL INPUT PINS */
 const int   BRAKE_IN_PIN        = 7;    // Digital input pin for launch mode button
@@ -210,6 +221,9 @@ void setup()
   pinMode(CYCLE_BTN_IN_PIN,     INPUT_PULLUP);
   pinMode(BRAKE_IN_PIN,         INPUT_PULLUP);  //input type will depend on implementation of brake light
 
+  lcd.begin();
+  lcd.backlight();
+
   /**
      Set up Interrupts:
      When the specified digital change is seen on a the interrupt pin it will pause the main loop and
@@ -356,6 +370,9 @@ void loop()
       digitalWrite(6, LOW);
     }
 
+    if (ENABLE_LCD_DISPLAY) {
+      printToLCD();  
+    }
   }
 
 
@@ -408,6 +425,31 @@ void buttonChecks()
     brakeButtonPrevious = brakeButtonState; //Update previous state
   }
 
+}
+
+void printToLCD() {
+  String tempVoltage = String(round(batteryVoltageTotal*10)/10); 
+  String tempAmperage = String(round(current*10)/10);
+  String tempTemp1 = String(round(tempOne*10)/10);
+  String tempTemp2 = String(round(tempTwo*10)/10);
+  String tempWheelSpeed = String((round(wheelSpeed*10)/10)*3.6); // *3.6 to kmph
+  String tempWheelRPM = String(round(wheelRPM*10)/10);
+
+  if (LCD_HAS_FOUR_LINES) {
+    lcd.setCursor(0,0);
+    lcd.print(LCD_FIRST_LINE);
+    lcd.setCursor(0,1);
+    lcd.print(tempVoltage + "V    " + tempAmperage + "A");
+    lcd.setCursor(0,2);
+    lcd.print(tempTemp1 + "C    " + tempTemp2 + "C");
+    lcd.setCursor(0,3);
+    lcd.print(tempWheelSpeed + "KMPH " + tempWheelRPM + "?");
+  } else {
+    lcd.setCursor(0,0);
+    lcd.print(tempVoltage + "V    " + tempAmperage + "A");
+    lcd.setCursor(0,1);
+    lcd.print(tempWheelSpeed + "KMPH " + tempTemp1 + "C");
+  }
 }
 
 /**

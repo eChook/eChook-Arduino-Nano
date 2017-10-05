@@ -427,20 +427,20 @@ void buttonChecks()
 }
 
 void printToLCD() {
-  float tempVoltage = round(batteryVoltageTotal*10)/10; 
-  float tempAmperage = round(current*10)/10;
-  float tempTemp1 = round(tempOne*10)/10;
-  float tempTemp2 = round(tempTwo*10)/10;
-  float tempWheelSpeed = (round(wheelSpeed*10)/10)*3.6; // *3.6 to kmph
-  float tempWheelRPM = round(wheelRPM*10)/10;
+  String tempVoltage = String(round(batteryVoltageTotal*10)/10); 
+  String tempAmperage = String(round(current*10)/10);
+  String tempTemp1 = String(round(tempOne*10)/10);
+  String tempTemp2 = String(round(tempTwo*10)/10);
+  String tempWheelSpeed = String((round(wheelSpeed*10)/10)*3.6); // *3.6 to kmph
+  String tempWheelRPM = String(round(wheelRPM*10)/10);
   
   lcd.print(LCD_FIRST_LINE);
   lcd.setCursor(0,1);
-  lcd.print(tempVoltage1 + "V    " + tempAmperage + "A");
+  lcd.print(tempVoltage + "V    " + tempAmperage + "A");
   lcd.setCursor(0,2);
   lcd.print(tempTemp1 + "C    " + tempTemp2 + "C");
   lcd.setCursor(0,3);
-  lcd.print(tempWheelSpeed + "KMPH " + tempWheelRPM "?");
+  lcd.print(tempWheelSpeed + "KMPH " + tempWheelRPM + "?");
 }
 
 /**

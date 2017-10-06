@@ -24,6 +24,8 @@
 #include <Bounce2.h>
 #include <Wire.h>
 #include <LiquidCrystal_I2C.h>
+#include <OneWire.h>
+#include <DallasTemperature.h>
 #include "Calibration.h"
 
 /** ================================== */
@@ -37,13 +39,22 @@
 const int DEBUG_MODE = 0; //if debug mode is on, no data will be sent via bluetooth. This is to make any debug messages easier to see.
 
 /** ================================== */
+/** DS18B20 OPTIONS                    */
+/** ================================== */
+OneWire oneWire(10);
+DallasTemperature sensors(&oneWire);
+
+const bool DS18B20_ENABLE = false; // writing code for DS18B20, so much better than thermistors
+const DeviceAddress TEMP1 = {0x28, 0xFF, 0x1A, 0xAA, 0x62, 0x15, 0x03, 0x20}; // example pls change
+const DeviceAddress TEMP2 = {0x28, 0xFF, 0x1A, 0xAA, 0x62, 0x15, 0x03, 0x20}; // example pls change
+
+/** ================================== */
 /** LCD CONFIGURATION                  */
 /** ================================== */
 const bool ENABLE_LCD_DISPLAY = true; // allows enabling or disabling of the I2C
 const bool LCD_HAS_FOUR_LINES = true; // does the LCD have 4 lines, if this is set to false I will assume it only has two
 LiquidCrystal_I2C lcd(0x27, 16, 4); // 16,4 LCD. Use a I2C finder to find the address; although they are often are 0x27
 const String LCD_FIRST_LINE = "DGS Racing"; // this is the first line that will always be displayed, change this to whatever 
-
 
 /** ================================== */
 /** CONSTANTS                          */

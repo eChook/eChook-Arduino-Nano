@@ -8,3 +8,10 @@ The main documentation for the eChook is hosted on a [Google Document](https://d
 ## Usage
 To run this code you will require the [Bounce2](https://github.com/thomasfredericks/Bounce2) library.  
 If you are updating to the new code please ensure your `Calibration.h` file is backedup. Enjoy :)
+
+## Modifications
+Some people have already modified the eChook to make it work exactly how they want! If you have any modifications of your own you want to share get in touch and we'll add them here.
+
+#### 4 Line LCD Driver information display and Digital Temperature Probes
+Derby Grammar have implemented an LCD driver information display, and replaced the thermistors with pre-calibrated temperature probes.
+See their code here: https://github.com/DerbyGrammar/eChookArduinoNano

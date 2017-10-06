@@ -45,8 +45,8 @@ OneWire oneWire(10);
 DallasTemperature sensors(&oneWire);
 
 const bool DS18B20_ENABLE = false; // writing code for DS18B20, so much better than thermistors
-const DeviceAddress TEMP1 = {0x28, 0xFF, 0x1A, 0xAA, 0x62, 0x15, 0x03, 0x20}; // example pls change
-const DeviceAddress TEMP2 = {0x28, 0xFF, 0x1A, 0xAA, 0x62, 0x15, 0x03, 0x20}; // example pls change
+const DeviceAddress TEMP1_PROBE = {0x28, 0xFF, 0x1A, 0xAA, 0x62, 0x15, 0x03, 0x20}; // example pls change
+const DeviceAddress TEMP2_PROBE = {0x28, 0xFF, 0x1A, 0xAA, 0x62, 0x15, 0x03, 0x20}; // example pls change
 
 /** ================================== */
 /** LCD CONFIGURATION                  */
@@ -234,6 +234,10 @@ void setup()
 
   lcd.begin();
   lcd.backlight();
+
+  sensors.begin();
+  sensors.setResolution(TEMP1_PROBE, 10);
+  sensors.setResolution(TEMP2_PROBE, 10);
 
   /**
      Set up Interrupts:
@@ -589,16 +593,32 @@ int readThrottle() //This function is for a variable Throttle input
 
 float readTempOne()
 {
-  float temp = thermistorADCToCelcius(analogRead(TEMP1_IN_PIN)); //use the thermistor function to turn the ADC reading into a temperature
-
+  float temp;
+  if(DS18B20_ENABLE) {
+    temp = probeGetTemp(TEMP1_PROBE);
+  } else {
+    temp = thermistorADCToCelcius(analogRead(TEMP1_IN_PIN)); //use the thermistor function to turn the ADC reading into a temperature
+  }
   return (temp); //return Temperature.
 }
 
 float readTempTwo()
 {
-  float temp = thermistorADCToCelcius(analogRead(TEMP2_IN_PIN));
+  float temp;
+  if(DS18B20_ENABLE) {
+    temp = probeGetTemp(TEMP2_PROBE);
+  } else {
+    temp = thermistorADCToCelcius(analogRead(TEMP2_IN_PIN));
+  }
 
   return (temp);
+}
+
+float probeGetTemp(DeviceAddress address) {
+  sensors.requestTemperatures();
+  float tempC = sensors.getTempC(address);
+
+  return (tempC != -127.00) ? tempC : -127;
 }
 
 

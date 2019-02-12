@@ -9,6 +9,10 @@ The main documentation for the eChook is hosted at [docs.echook.uk](https://docs
 To run this code you will require the [Bounce2](https://github.com/thomasfredericks/Bounce2) library.  
 If you are updating to the new code please ensure your `Calibration.h` file is backedup. Enjoy :)
 
+## Changelog
+
+12/2/19: Fixed bug that made speed read at 1/3 of actual (Thanks Apex Racing!)
+
 ## Modifications
 Some people have already modified the eChook to make it work exactly how they want! If you have any modifications of your own you want to share get in touch and we'll add them here.
 

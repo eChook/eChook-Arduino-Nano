@@ -226,13 +226,13 @@ void setup()
   //Initialise debounce objects
   cycleButtonDebounce.attach(CYCLE_BTN_IN_PIN);
   cycleButtonDebounce.interval(50);
-  
+
   launchButtonDebounce.attach(LAUNCH_BTN_IN_PIN);
   launchButtonDebounce.interval(50);
-  
+
   brakeButtonDebounce.attach(BRAKE_IN_PIN);
   brakeButtonDebounce.interval(50);
-  
+
 
   /**
    * Zero the current transducer. All hall effect current sensors will need zeroing - To do this we
@@ -295,7 +295,7 @@ void loop()
   //Asynchronous Operations - those that aren't governed by the 4Hz update/transmit. Primarily buttons.
   buttonChecks(); //Checks buttons each loop, debounces and sends any changes in state
 
-  
+
 
   throttle = readThrottle(); // if this is being used as the input to a motor controller it is recommended to check it at a higher frequency than 4Hz
 
@@ -316,7 +316,7 @@ void loop()
 
 
     sendData(THROTTLE_INPUT_ID, throttle);
-   
+
 
 
     if (loopCounter == 1)
@@ -373,7 +373,7 @@ void buttonChecks()
     if(cycleButtonState == HIGH) //Button Pressed
     {
       sendData(CYCLE_VIEW_ID, 1); // Actual packet content is irrelevant - sending a packet with the ID represents a button press
-    }    
+    }
 
     //Don't care when button is released
 
@@ -387,7 +387,7 @@ void buttonChecks()
     {
       sendData(LAUNCH_MODE_ID, 1); // Actual packet content is irrelevant - sending a packet with the ID represents a button press
     }
-    
+
     //Don't care when button is released
 
     launchButtonPrevious = launchButtonState; //Update previous state
@@ -398,7 +398,7 @@ void buttonChecks()
   {
     if(brakeButtonState == HIGH) //Button Pressed
     {
-      sendData(BRAKE_PRESSED_ID, 100); 
+      sendData(BRAKE_PRESSED_ID, 100);
     }
     else if(brakeButtonState == LOW) //Button Released
     {
@@ -593,7 +593,7 @@ float readWheelSpeed() //wheelRPM is updated whenever this is called
 
   for (int i = 0; i < speedSmoothingSetting; i++)
   {
-    wheelSpeedMetersPerSecond = speedSmoothingArray[i];
+    wheelSpeedMetersPerSecond += speedSmoothingArray[i];
   }
 
   wheelSpeedMetersPerSecond = wheelSpeedMetersPerSecond / speedSmoothingSetting; //divide summed figure by array count to get mean value
@@ -616,9 +616,9 @@ float readMotorRPM()
   // Now calculate the number of revolutions of the motor shaft
 
   float motorRevolutions = tempMotorPoll / CAL_MOTOR_MAGNETS;
-  
+
   float motorRevolutionsPerMin = motorRevolutions * 60.0;
-  
+
   float timeDiffms = tempMotorPollTime - tempLastMotorPollTime;
   float timeDiffs = timeDiffms / 1000.0;
     // Now use the time time passed to convert this to revolutions per minute
@@ -703,7 +703,7 @@ float thermistorADCToCelcius(int rawADC)
     Serial.println(temperature);
   }
 
-  
+
 
   // Now return the Celcius Value:
 
@@ -999,16 +999,16 @@ void configureBluetooth()
 //    //  Serial.println(BT_PASSWORD);
 //    Serial.print("1234");
 //    Serial.print("\r\n");
-//  
+//
 //    waitForSerial(1000);
-//  
+//
 //    tempOne = (char)Serial.read();
-//  
+//
 //    waitForSerial(500);
-//  
+//
 //    tempTwo = (char)Serial.read();
-//  
-//  
+//
+//
 //    if (tempOne == 'O' && tempTwo == 'K') //Was the response "OK"?
 //    {
 //      Serial.println("Password Set");
@@ -1098,7 +1098,3 @@ void fanSpeedISR()
 {
   fanPoll++;
 }
-
-
-
-

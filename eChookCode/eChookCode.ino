@@ -280,7 +280,7 @@ void setup()
 
   Serial.begin(BT_BAUDRATE);    // Bluetooth and USB communications
 
-  lastShortDataSendTime - millis(); //Give the timing a start value.
+  lastShortDataSendTime = millis(); //Give the timing a start value.
 
 } //End of Setup
 

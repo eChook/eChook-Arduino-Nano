@@ -17,10 +17,6 @@ const int CYCLE_BTN_IN_PIN    = 12;     // Digital input pin for cycle view butt
 /** DIGITAL INTERRUPT PINS */
 const int MOTOR_RPM_PIN       = 2;      // Digital interrupt for motor pulses
 const int WHEEL_RPM_PIN       = 3;      // Digital interrupt for wheel pulses
-const int FAN_RPM_PIN         = 13;     // Digital interrupt for motor pulses
 
 /** DIGITAL AND PWM OUTPUT PINS */
 const int MOTOR_OUT_PIN       = 5;     // PWM output to the motor
-const int LED_1_OUT_PIN       = 6;     // PWM Output for LED 1
-const int LED_2_OUT_PIN       = 9;     // PWM Output for LED 2
-const int FAN_OUT_PIN         = 11;    // PWM output to the fan(s)

@@ -70,13 +70,13 @@ const int buttonDebounceTime = 50;
 //Current Smoothing Variables:
 
 const int currentSmoothingSetting = 4; //current is sampled every 250ms, therefore 4 makes 1s of smoothing
-int currentSmoothingArray[currentSmoothingSetting];
+float currentSmoothingArray[currentSmoothingSetting];
 int currentSmoothingCount = 0;
 
 //Speed Smoothing Variables:
 
 const int speedSmoothingSetting = 3; //speed is sampled every 1s, therefore 3 makes 3 seconds of smoothing
-int speedSmoothingArray[speedSmoothingSetting];
+float speedSmoothingArray[speedSmoothingSetting];
 int speedSmoothingCount = 0;
 
 // Experimental Area Variables:

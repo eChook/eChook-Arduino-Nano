@@ -487,6 +487,10 @@ void sendData(char identifier, float value)
                 Serial.write(dataByte1);
                 Serial.write(dataByte2);
                 Serial.write(125);
+        }else{
+          Serial.print(identifier);
+          Serial.print(", ");
+          Serial.println(value);
         }
 }
 
@@ -530,6 +534,10 @@ void sendData(char identifier, int value)
                 Serial.write(dataByte1);
                 Serial.write(dataByte2);
                 Serial.write(125);
+        } else{
+          Serial.print(identifier);
+          Serial.print(", ");
+          Serial.println(value);
         }
 }
 

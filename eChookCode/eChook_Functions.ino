@@ -256,6 +256,8 @@ int readThrottle()
                 }
         }
 
+        tempThrottle = map(tempThrottle,0,255,0,100);
+
         if(CAL_THROTTLE_RAMP) {
                 // This code generates a simple ramp up in throttle. The >100 is there as it will likely take about 30% throttle to get the car moving, so this will give a quicker start.
                 if(tempThrottle >= currThrtlOut && tempThrottle > 100) { // This could be if(thrtlIn > thrtlOut && speed < threshold) to make it low speed only. Speed and threshold are undefined in this example!

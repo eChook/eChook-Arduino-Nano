@@ -15,11 +15,6 @@ const char CYCLE_VIEW_ID       = 'C';
 const char GEAR_RATIO_ID       = 'r';
 const char BRAKE_PRESSED_ID    = 'B';
 
-// Variables to track timing
-// unsigned long lastShortDataSendTime = 0;      // Time last BT data packet was sent.
-// unsigned long lastWheelSpeedPollTime = 0;      // Time of last Wheel Speed check
-// unsigned long lastMotorSpeedPollTime = 0;      // Time of last Motor RPM check
-// unsigned long nextThrottleReadMs = 0;
 
 // Read in values:
 float batteryVoltageTotal   = 0;

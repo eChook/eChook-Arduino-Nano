@@ -16,10 +16,10 @@ const char GEAR_RATIO_ID       = 'r';
 const char BRAKE_PRESSED_ID    = 'B';
 
 // Variables to track timing
-unsigned long lastShortDataSendTime = 0;      // Time last BT data packet was sent.
-unsigned long lastWheelSpeedPollTime = 0;      // Time of last Wheel Speed check
-unsigned long lastMotorSpeedPollTime = 0;      // Time of last Motor RPM check
-unsigned long nextThrottleReadMs = 0;
+// unsigned long lastShortDataSendTime = 0;      // Time last BT data packet was sent.
+// unsigned long lastWheelSpeedPollTime = 0;      // Time of last Wheel Speed check
+// unsigned long lastMotorSpeedPollTime = 0;      // Time of last Motor RPM check
+// unsigned long nextThrottleReadMs = 0;
 
 // Read in values:
 float batteryVoltageTotal   = 0;
@@ -36,21 +36,14 @@ float tempThree             = 0;
 int brake                   = 0;
 
 // Loop counter used for longer interval functions
-int loopCounter = 0;
+
 
 // Interrupt Variables.
 volatile unsigned long motorPoll      = 0;
 volatile unsigned long wheelPoll      = 0;
-volatile unsigned long fanPoll        = 0;
 // Tip: Any variables that are being used in an Interrupt Service Routine need to be declared as volatile. This ensures
 // that each time the variable is accessed it is the master copy in RAM rather than a cached version within the CPU.
 // This way the main loop and the ISR variables are always in sync
-
-// Button Tracking variables
-int cycleButtonPrevious   = LOW; // Track state so that a button press can be detected
-int launchButtonPrevious  = LOW; // Track state so that a button press can be detected
-int brakeButtonPrevious   = LOW; // Track state so that a button press can be detected
-const int buttonDebounceTime = 50;
 
 
 /**

@@ -3,13 +3,13 @@ void eChookSetup(){
 
         //Initialise debounce objects for the three buttons
         cycleButtonDebounce.attach(CYCLE_BTN_IN_PIN);
-        cycleButtonDebounce.interval(buttonDebounceTime);
+        cycleButtonDebounce.interval(50); //50ms
 
         launchButtonDebounce.attach(LAUNCH_BTN_IN_PIN);
-        launchButtonDebounce.interval(buttonDebounceTime);
+        launchButtonDebounce.interval(50);
 
         brakeButtonDebounce.attach(BRAKE_IN_PIN);
-        brakeButtonDebounce.interval(buttonDebounceTime);
+        brakeButtonDebounce.interval(50);
 
         /**
          * Initialise Serial Communication
@@ -35,7 +35,7 @@ void eChookSetup(){
 
         Serial.begin(CAL_BT_BAUDRATE); // Bluetooth and USB communications
 
-        lastShortDataSendTime = millis(); //Give the timing a start value.
+
 }
 
 void pinSetup(){
@@ -75,15 +75,17 @@ void eChookRoutinesUpdate(){
         // Wheel and Motor speed are accumulated over time, so the longer time left between samples, the higher the resolution of the value.
         // As such, these are only updated ever 1 second. Temperature is a reading that will not change fast, and consumes more processing
         // time to calculate than most, so this is also checked every 1s.
-
+        static unsigned long nextThrottleReadMs = millis();
         if(millis() > nextThrottleReadMs) { // millis() gives milliseconds since power on. If this is greater than the nextThrottleReadMs we've calculated it will run.
                 nextThrottleReadMs = millis() + 100; //100 ms, 10hz
                 throttle = readThrottle(); // if this is being used as the input to a motor controller it is recommended to check it at a higher frequency than 4Hz
         }
 
+        static unsigned long lastShortDataSendTime = millis(); //this is reset at the start so that the calculation time does not add to the loop time
         if (millis() - lastShortDataSendTime > CAL_DATA_TRANSMIT_INTERVAL) //i.e. if 250ms have passed since this code last ran
         {
-                lastShortDataSendTime = millis(); //this is reset at the start so that the calculation time does not add to the loop time
+                lastShortDataSendTime = millis();
+                static unsigned int loopCounter = 0;
                 loopCounter = loopCounter + 1; // This value will loop 1-4, the 1s update variables will update on certain loops to spread the processing time.
                 //It is recommended to leave the ADC a short recovery period between readings (~1ms). To achieve this we can transmit the data between readings
                 batteryVoltageTotal = readVoltageTotal();
@@ -144,6 +146,7 @@ void buttonChecks()
         cycleButtonDebounce.update();
         launchButtonDebounce.update();
         brakeButtonDebounce.update();
+        static unsigned int cycleButtonPrevious   = LOW; // Track state so that a button press can be detected
         int cycleButtonState = !cycleButtonDebounce.read(); //Buttons are LOW when pressed, ! inverts this, so state is HIGH when pressed
         if(cycleButtonState != cycleButtonPrevious) //Button has changed state - either pressed or depressed
         {
@@ -155,6 +158,7 @@ void buttonChecks()
                 cycleButtonPrevious = cycleButtonState; //Update previous state
         }
 
+        static unsigned int launchButtonPrevious  = LOW; // Track state so that a button press can be detected
         int launchButtonState = !launchButtonDebounce.read(); //Buttons are LOW when pressed, ! inverts this, so state is HIGH when pressed
         if(launchButtonState != launchButtonPrevious) //Button has changed state - either pressed or depressed
         {
@@ -166,6 +170,7 @@ void buttonChecks()
                 launchButtonPrevious = launchButtonState; //Update previous state
         }
 
+        static unsigned int brakeButtonPrevious   = LOW; // Track state so that a button press can be detected
         int brakeButtonState = !brakeButtonDebounce.read(); //Buttons are LOW when pressed, ! inverts this, so state is HIGH when pressed
         if(brakeButtonState != brakeButtonPrevious) //Button has changed state - either pressed or depressed
         {
@@ -296,6 +301,7 @@ float readWheelSpeed()
                 }
                 wheelSpeedMetersPerSecond = wheelRPS *  (float) CAL_WHEEL_CIRCUMFERENCE;
         }else {
+                static unsigned long lastWheelSpeedPollTime = 0;
                 //Counts the number of magnet passesdetected since the last wheel speed check,
                 // converts to a speed in meters per second and returns that value.
                 // Also updates the global wheel RPM value each call.
@@ -348,6 +354,7 @@ float readMotorRPM()
                 }
                 return(tempRpm);
         }else {
+                static unsigned long lastMotorSpeedPollTime = 0;
                 //Counts the number of magnet passesdetected since the last Motor rpm check, converts to revolutions per minute and returns that value
                 // First action is to take copies of the motor poll count and time so that the variables don't change during the calculations.
                 int tempMotorPoll = motorPoll;
@@ -488,8 +495,9 @@ void sendData(char identifier, float value)
                 Serial.write(dataByte2);
                 Serial.write(125);
         }else{
+          Serial.print("Data Out: \t");
           Serial.print(identifier);
-          Serial.print(", ");
+          Serial.print(",\t");
           Serial.println(value);
         }
 }
@@ -535,8 +543,10 @@ void sendData(char identifier, int value)
                 Serial.write(dataByte2);
                 Serial.write(125);
         } else{
+
+          Serial.print("Data Out: \t");
           Serial.print(identifier);
-          Serial.print(", ");
+          Serial.print(",\t");
           Serial.println(value);
         }
 }

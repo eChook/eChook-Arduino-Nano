@@ -41,7 +41,7 @@ const int CAL_THROTTLE_RAMP = 0; // 1 to enable. A simple implementation of a th
 const int CAL_THROTTLE_LOW = 1; // This voltage and below is regarded as 0% throttle
 const int CAL_THROTTLE_HIGH = 4; // This voltage and above is regarded as 100% throttle
 
-
+// _______________________________________________________________
 // Experimental Area!!
 // Enabling these might break things :)
 

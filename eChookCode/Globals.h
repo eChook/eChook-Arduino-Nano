@@ -28,7 +28,7 @@ float gearRatio             = 0;
 float tempOne               = 0;
 float tempTwo               = 0;
 float tempThree             = 0;
-int brake                   = 0;
+uint8_t brake                   = 0;
 
 // Loop counter used for longer interval functions
 
@@ -57,18 +57,18 @@ volatile unsigned long wheelPoll      = 0;
 
 //Current Smoothing Variables:
 
-const int currentSmoothingSetting = 4; //current is sampled every 250ms, therefore 4 makes 1s of smoothing
+const uint8_t currentSmoothingSetting = 4; //current is sampled every 250ms, therefore 4 makes 1s of smoothing
 float currentSmoothingArray[currentSmoothingSetting];
-int currentSmoothingCount = 0;
+uint8_t currentSmoothingCount = 0;
 
 //Speed Smoothing Variables:
 
-const int speedSmoothingSetting = 3; //speed is sampled every 1s, therefore 3 makes 3 seconds of smoothing
+const uint8_t speedSmoothingSetting = 3; //speed is sampled every 1s, therefore 3 makes 3 seconds of smoothing
 float speedSmoothingArray[speedSmoothingSetting];
-int speedSmoothingCount = 0;
+uint8_t speedSmoothingCount = 0;
 
 // Experimental Area Variables:
-volatile long lastMotorPollTime = 0;
-volatile long lastMotorInterval = 0;
-volatile long lastWheelPollTime = 0;
-volatile long lastWheelInterval = 0;
+volatile unsigned long lastMotorPollTime = 5000000; // Initialise poll times high so routine doesn't try to calculate an infinite speed at startup
+volatile unsigned long lastMotorInterval = 0;
+volatile unsigned long lastWheelPollTime = 5000; // Initialise poll times high so routine doesn't try to calculate an infinite speed at startup
+volatile unsigned long lastWheelInterval = 0;

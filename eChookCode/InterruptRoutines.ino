@@ -6,8 +6,11 @@
 void motorSpeedISR()
 {
         if(USE_IMPROVED_RPM_CALCULATION) {
-                lastMotorInterval = millis() - lastMotorPollTime;
-                lastMotorPollTime = millis();
+                unsigned long intervalTemp = micros() - lastMotorPollTime;
+                if(intervalTemp > 2000) { //under 20ms, assume bounce/noise
+                        lastMotorInterval = intervalTemp;
+                        lastMotorPollTime = micros();
+                }
         }else {
                 motorPoll++;
         }
@@ -16,8 +19,11 @@ void motorSpeedISR()
 void wheelSpeedISR()
 {
         if(USE_IMPROVED_SPEED_CALCULATION) {
-                lastWheelInterval = millis() - lastWheelPollTime;
-                lastWheelPollTime = millis();
+                unsigned long intervalTemp = millis() - lastWheelPollTime;
+                if(intervalTemp > 20) { //under 20ms, assume bounce/noise
+                        lastWheelInterval = intervalTemp;
+                        lastWheelPollTime = millis();
+                }
         }else {
                 wheelPoll++;
         }

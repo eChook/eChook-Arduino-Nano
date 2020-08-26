@@ -20,8 +20,8 @@ const float CAL_BT_BAUDRATE         = 115200;            // Baud Rate to run at.
 const unsigned long CAL_DATA_TRANSMIT_INTERVAL     = 250;         // transmit interval in ms
 
 // Car Specific Settings
-const int CAL_WHEEL_MAGNETS        = 6;       //Number of magnets on wheel
-const int CAL_MOTOR_MAGNETS        = 3;       // Number of magnets on motor shaft for hall effect sensor
+const int CAL_WHEEL_MAGNETS        = 2;       //Number of magnets on wheel
+const int CAL_MOTOR_MAGNETS        = 1;       // Number of magnets on motor shaft for hall effect sensor
 const float CAL_WHEEL_CIRCUMFERENCE  = 1.178;     //Outer circumference of tyre, in Meters. i.e. the distance travelled in one revolution
 
 //Board Specific Calibrations

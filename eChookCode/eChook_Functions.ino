@@ -99,6 +99,16 @@ void eChookRoutinesUpdate(){
 
                 sendData(THROTTLE_INPUT_ID, throttle);
 
+                if(USE_IMPROVED_RPM_CALCULATION) {
+                        motorRPM = readMotorRPM();
+                        sendData(MOTOR_ID, motorRPM);
+                }
+
+                if(USE_IMPROVED_SPEED_CALCULATION) {
+                        wheelSpeed = readWheelSpeed();
+                        sendData(SPEED_ID,wheelSpeed);
+                }
+
                 if (loopCounter == 1)
                 { //Functions to run every 1st loop
                         tempOne = readTempOne();
@@ -125,12 +135,14 @@ void eChookRoutinesUpdate(){
                 { //Functions to run every 4th loop
                         loopCounter = 0; //4 * 0.25 makes one second, so counter resets
 
-                        wheelSpeed = readWheelSpeed();
-                        sendData(SPEED_ID, wheelSpeed);
-
-                        motorRPM = readMotorRPM();
-                        sendData(MOTOR_ID, motorRPM);
-
+                        if(!USE_IMPROVED_SPEED_CALCULATION) {
+                                wheelSpeed = readWheelSpeed();
+                                sendData(SPEED_ID, wheelSpeed);
+                        }
+                        if(!USE_IMPROVED_RPM_CALCULATION) {
+                                motorRPM = readMotorRPM();
+                                sendData(MOTOR_ID, motorRPM);
+                        }
                         gearRatio = calculateGearRatio();
                         sendData(GEAR_RATIO_ID, gearRatio);
 
@@ -147,7 +159,7 @@ void buttonChecks()
         launchButtonDebounce.update();
         brakeButtonDebounce.update();
         static unsigned int cycleButtonPrevious   = LOW; // Track state so that a button press can be detected
-        int cycleButtonState = !cycleButtonDebounce.read(); //Buttons are LOW when pressed, ! inverts this, so state is HIGH when pressed
+        unsigned int cycleButtonState = !cycleButtonDebounce.read(); //Buttons are LOW when pressed, ! inverts this, so state is HIGH when pressed
         if(cycleButtonState != cycleButtonPrevious) //Button has changed state - either pressed or depressed
         {
                 if(cycleButtonState == HIGH) //Button Pressed
@@ -159,7 +171,7 @@ void buttonChecks()
         }
 
         static unsigned int launchButtonPrevious  = LOW; // Track state so that a button press can be detected
-        int launchButtonState = !launchButtonDebounce.read(); //Buttons are LOW when pressed, ! inverts this, so state is HIGH when pressed
+        unsigned int launchButtonState = !launchButtonDebounce.read(); //Buttons are LOW when pressed, ! inverts this, so state is HIGH when pressed
         if(launchButtonState != launchButtonPrevious) //Button has changed state - either pressed or depressed
         {
                 if(launchButtonState == HIGH) //Button Pressed
@@ -171,7 +183,7 @@ void buttonChecks()
         }
 
         static unsigned int brakeButtonPrevious   = LOW; // Track state so that a button press can be detected
-        int brakeButtonState = !brakeButtonDebounce.read(); //Buttons are LOW when pressed, ! inverts this, so state is HIGH when pressed
+        unsigned int brakeButtonState = !brakeButtonDebounce.read(); //Buttons are LOW when pressed, ! inverts this, so state is HIGH when pressed
         if(brakeButtonState != brakeButtonPrevious) //Button has changed state - either pressed or depressed
         {
                 if(brakeButtonState == HIGH) //Button Pressed
@@ -233,8 +245,8 @@ int readThrottle()
         if(CAL_THROTTLE_VARIABLE) //Analogue throttle, not push button
         {
                 tempThrottle = (tempThrottle / 1023) * CAL_REFERENCE_VOLTAGE; // Gives the actual voltage seen on the arduino Pin, assuming reference voltage of 5V
-                Serial.print(tempThrottle);
-                Serial.print(", ");
+                // Serial.print(tempThrottle);
+                // Serial.print(", ");
                 //The following code adds dead bands to the start and end of the throttle travel
                 if (tempThrottle < CAL_THROTTLE_LOW) //less than 1V
                 {
@@ -297,11 +309,16 @@ float readWheelSpeed()
         if(USE_IMPROVED_SPEED_CALCULATION) { // Two ways to calculate wheel RPM
                 // Calculate time taken for last wheel rotation
                 float wheelRPS = 0;
-                if(lastWheelInterval < 15000) { //If it takes longer than 5s for a rotation, consider it stopped.
-                        long fullRotationMs = lastWheelInterval * CAL_WHEEL_MAGNETS; // Ideally one motor magnet
-                        wheelRPS = (float)1000 / fullRotationMs; // 1 second, divided by time of one rotation at current speed
+                if(millis() - lastWheelPollTime < 2000) { // if over 2 seconds since a poll is seen, assume stopped.
+                        if(lastWheelInterval < 2000 ) { //catches the case of first pulse in a while
+                                long fullRotationMs = lastWheelInterval * CAL_WHEEL_MAGNETS; // Ideally one motor magnet
+                                wheelRPS = (float)1000 / fullRotationMs; // 1 second, divided by time of one rotation at current speed
+                        }
+                }else{
+                        wheelRPS = 0;
                 }
                 wheelSpeedMetersPerSecond = wheelRPS *  (float) CAL_WHEEL_CIRCUMFERENCE;
+
         }else {
                 static unsigned long lastWheelSpeedPollTime = 0;
                 //Counts the number of magnet passesdetected since the last wheel speed check,
@@ -341,6 +358,8 @@ float readWheelSpeed()
                 wheelSpeedMetersPerSecond += speedSmoothingArray[i];
         }
         wheelSpeedMetersPerSecond = wheelSpeedMetersPerSecond / speedSmoothingSetting; //divide summed figure by array count to get mean value
+        // Serial.print("Speed MPS = ");
+        // Serial.println(wheelSpeedMetersPerSecond);
         return (wheelSpeedMetersPerSecond); //return smoothed value
 
 }
@@ -350,10 +369,23 @@ float readMotorRPM()
         if(USE_IMPROVED_RPM_CALCULATION) {
                 float tempRpm = 0;
                 // Calculate time taken for last wheel rotation
-                if(lastMotorInterval < 5000) { //If it takes longer than 5s for a rotation, consider it stopped.
-                        long fullRotationMs = lastMotorInterval * CAL_MOTOR_MAGNETS; // Ideally one motor magnet
-                        tempRpm = (float)60000 / fullRotationMs; // 1 minute, divided by time of one rotation at current speed
+                if(micros() - lastMotorPollTime < 1000000) {//If it takes longer than 2s for a rotation, consider it stopped.
+                        if(lastMotorInterval < 1000000) { //catches the case of first pulse in a while
+                                unsigned long fullRotationMs = lastMotorInterval * CAL_MOTOR_MAGNETS; // Ideally one motor magnet
+                                tempRpm = (float)60000000 / fullRotationMs; // 1 minute, divided by time of one rotation at current speed
+                        }
+                }else{
+                        tempRpm = 0;
                 }
+
+                // tempRpm = motorRPM *0.5 + tempRpm *0.5;
+                //
+                // char buff[50];
+                // sprintf(buff, "Motor Interval = %lu", lastMotorInterval);
+                // Serial.println(buff);
+                // Serial.print("RPM = ");
+                // Serial.println(tempRpm);
+                // lastMotorInterval = 0;
                 return(tempRpm);
         }else {
                 static unsigned long lastMotorSpeedPollTime = 0;
@@ -497,10 +529,10 @@ void sendData(char identifier, float value)
                 Serial.write(dataByte2);
                 Serial.write(125);
         }else{
-          Serial.print("Data Out: \t");
-          Serial.print(identifier);
-          Serial.print(",\t");
-          Serial.println(value);
+                Serial.print("Data Out: \t");
+                Serial.print(identifier);
+                Serial.print(",\t");
+                Serial.println(value);
         }
 }
 
@@ -546,10 +578,10 @@ void sendData(char identifier, int value)
                 Serial.write(125);
         } else{
 
-          Serial.print("Data Out: \t");
-          Serial.print(identifier);
-          Serial.print(",\t");
-          Serial.println(value);
+                Serial.print("Data Out: \t");
+                Serial.print(identifier);
+                Serial.print(",\t");
+                Serial.println(value);
         }
 }
 

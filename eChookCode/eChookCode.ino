@@ -1045,12 +1045,14 @@ void configureBluetooth()
   }
   else
   {
-    while (1) //endless loop - config failed so shouldn't continue!
+    int flashCount = 0;
+    while (flashCount < 10) //10 fast flashes indicate not configured successfully
     {
       digitalWrite(13, HIGH);
       delay(50);
       digitalWrite(13, LOW);
       delay(50);
+      flashCount ++;
     }
   }
 

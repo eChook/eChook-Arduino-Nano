@@ -17,7 +17,7 @@ const String CAL_BT_NAME     = "eChook"; // Whatever you want to name your car's
 const float CAL_BT_BAUDRATE         = 115200;            // Baud Rate to run at. Must match Arduino's baud rate.
 
 // Data Read and Transmit Interval:
-const unsigned long CAL_DATA_TRANSMIT_INTERVAL     = 250;         // transmit interval in ms
+const unsigned long CAL_DATA_TRANSMIT_INTERVAL     = 100;         // transmit interval in ms
 
 // Car Specific Settings
 const int CAL_WHEEL_MAGNETS        = 2;       //Number of magnets on wheel

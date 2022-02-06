@@ -13,38 +13,42 @@
  */
 
 //Bluetooth Settings
-const String CAL_BT_NAME     = "eChook"; // Whatever you want to name your car's bluetooth
-const float CAL_BT_BAUDRATE         = 115200;            // Baud Rate to run at. Must match Arduino's baud rate.
+String CAL_BT_NAME     = "eChook"; // Whatever you want to name your car's bluetooth
+float CAL_BT_BAUDRATE         = 115200;            // Baud Rate to run at. Must match Arduino's baud rate.
 
 // Data Read and Transmit Interval:
-const unsigned long CAL_DATA_TRANSMIT_INTERVAL     = 100;         // transmit interval in ms
+unsigned long CAL_DATA_TRANSMIT_INTERVAL     = 100;         // transmit interval in ms
 
 // Car Specific Settings
-const int CAL_WHEEL_MAGNETS        = 2;       //Number of magnets on wheel
-const int CAL_MOTOR_MAGNETS        = 1;       // Number of magnets on motor shaft for hall effect sensor
-const float CAL_WHEEL_CIRCUMFERENCE  = 1.178;     //Outer circumference of tyre, in Meters. i.e. the distance travelled in one revolution
+int CAL_WHEEL_MAGNETS        = 2;       //Number of magnets on wheel
+int CAL_MOTOR_MAGNETS        = 1;       // Number of magnets on motor shaft for hall effect sensor
+float CAL_WHEEL_CIRCUMFERENCE  = 1.178;     //Outer circumference of tyre, in Meters. i.e. the distance travelled in one revolution
 
 //Board Specific Calibrations
-const float CAL_REFERENCE_VOLTAGE   = 5;     // Voltage seen on the arduino 5V rail
-const float CAL_BATTERY_TOTAL       = 6.15;  // Multiplier for 24v calculation. Calculated by 24v Input devided by voltage on Arduino pin A0
-const float CAL_BATTERY_LOWER       = 3.071; // Multiplier for 12v calculation. Calculated by 12V Input devided by voltage on Arduino pin A7
-const float CAL_CURRENT             = 37.55; // Current Multiplier - See documentation for calibration method
+float CAL_REFERENCE_VOLTAGE   = 5;     // Voltage seen on the arduino 5V rail
+float CAL_BATTERY_TOTAL       = 6.15;  // Multiplier for 24v calculation. Calculated by 24v Input devided by voltage on Arduino pin A0
+float CAL_BATTERY_LOWER       = 3.071; // Multiplier for 12v calculation. Calculated by 12V Input devided by voltage on Arduino pin A7
+float CAL_CURRENT             = 37.55; // Current Multiplier - See documentation for calibration method
 
+int CAL_LINEAR_TEMPERATURE = 0; //0 for Thermistors, 1 for a Linear temperature sensor.
 //Thermistor Calibration Values
-const float CAL_THERM_A = 0.001871300068; //Steinhart-Hart constants - See documentation for calibration method
-const float CAL_THERM_B = 0.00009436080271;
-const float CAL_THERM_C = 0.0000007954800125;
+float CAL_THERM1_A = 0.001871300068; //Linear multiplier OR Steinhart-Hart constants - See documentation for calibration method
+float CAL_THERM1_B = 0.00009436080271;
+float CAL_THERM1_C = 0.0000007954800125;
+float CAL_THERM2_A = 0.001871300068; //Linear multiplier OR Steinhart-Hart constants - See documentation for calibration method
+float CAL_THERM2_B = 0.00009436080271;
+float CAL_THERM2_C = 0.0000007954800125;
 
 //Throttle calibrations
-const int CAL_THROTTLE_VARIABLE = 1; // 1 for a variable throttle, 0 for a push button (on/off) throttle.
-const int CAL_THROTTLE_RAMP = 0; // 1 to enable. A simple implementation of a throttle ramp up
-const int CAL_THROTTLE_LOW = 1; // This voltage and below is regarded as 0% throttle
-const int CAL_THROTTLE_HIGH = 4; // This voltage and above is regarded as 100% throttle
+int CAL_THROTTLE_VARIABLE = 1; // 1 for a variable throttle, 0 for a push button (on/off) throttle.
+int CAL_THROTTLE_RAMP = 0; // 1 to enable. A simple implementation of a throttle ramp up
+int CAL_THROTTLE_LOW = 1; // This voltage and below is regarded as 0% throttle
+int CAL_THROTTLE_HIGH = 4; // This voltage and above is regarded as 100% throttle
 
 // _______________________________________________________________
 // Experimental Area!!
 // Enabling these might break things :)
 
 // These may break if the vehicle isn't moving
-const int USE_IMPROVED_RPM_CALCULATION = 1; // Will work best with one magnet on the motor shaft
-const int USE_IMPROVED_SPEED_CALCULATION = 1; // Will work best with one magnet on the wheel
+int CAL_USE_IMPROVED_RPM_CALCULATION = 1; // Will work best with one magnet on the motor shaft
+int CAL_USE_IMPROVED_SPEED_CALCULATION = 1; // Will work best with one magnet on the wheel

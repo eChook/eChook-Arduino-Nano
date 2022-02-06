@@ -2,11 +2,14 @@
 // eChook Telemetry Board Code
 // Target: ATMega 328, Arduino Nano.
 //
-// Authors: IAN COOPER, ROWAN GRIFFIN, BEN NAGY
-// Liscene: MIT
+// Authors: ROWAN GRIFFIN, IAN COOPER
+// Lisence: MIT
 // Support: echook.boards.net
 // Documentation: docs.eChook.uk
 // ===============================================
+
+#define CODE_VERSION 2
+
 
 //Includes
 #include <math.h>
@@ -14,6 +17,7 @@
 #include "Calibration.h"
 #include "Pinout.h"
 #include "Globals.h"
+
 
 
 //Build Options
@@ -41,9 +45,9 @@ void loop()
 
         buttonChecks(); // Checks buttons each loop, debounces and sends any changes in state
 
-        // Any new code you want to add to loop you can add below, HOWEVER using
-        // blocking code (anything that takes a long time to complete or uses delay()
-        // will cause timing errors with the eChook code.
+        // Any new code you want to add to loop you can add below, HOWEVER avoid using
+        // blocking code (anything that takes a long time to complete or uses 'delay()'
+        // as it will cause timing errors with the eChook code.
 
 
 }

@@ -99,12 +99,12 @@ void eChookRoutinesUpdate(){
 
                 sendData(THROTTLE_INPUT_ID, throttle);
 
-                if(USE_IMPROVED_RPM_CALCULATION) {
+                if(CAL_USE_IMPROVED_RPM_CALCULATION) {
                         motorRPM = readMotorRPM();
                         sendData(MOTOR_ID, motorRPM);
                 }
 
-                if(USE_IMPROVED_SPEED_CALCULATION) {
+                if(CAL_USE_IMPROVED_SPEED_CALCULATION) {
                         wheelSpeed = readWheelSpeed();
                         sendData(SPEED_ID,wheelSpeed);
                 }
@@ -135,11 +135,11 @@ void eChookRoutinesUpdate(){
                 { //Functions to run every 4th loop
                         loopCounter = 0; //4 * 0.25 makes one second, so counter resets
 
-                        if(!USE_IMPROVED_SPEED_CALCULATION) {
+                        if(!CAL_USE_IMPROVED_SPEED_CALCULATION) {
                                 wheelSpeed = readWheelSpeed();
                                 sendData(SPEED_ID, wheelSpeed);
                         }
-                        if(!USE_IMPROVED_RPM_CALCULATION) {
+                        if(!CAL_USE_IMPROVED_RPM_CALCULATION) {
                                 motorRPM = readMotorRPM();
                                 sendData(MOTOR_ID, motorRPM);
                         }
@@ -306,7 +306,7 @@ float readWheelSpeed()
 {
         float wheelSpeedMetersPerSecond = 0;
 
-        if(USE_IMPROVED_SPEED_CALCULATION) { // Two ways to calculate wheel RPM
+        if(CAL_USE_IMPROVED_SPEED_CALCULATION) { // Two ways to calculate wheel RPM
                 // Calculate time taken for last wheel rotation
                 float wheelRPS = 0;
                 if(millis() - lastWheelPollTime < 2000) { // if over 2 seconds since a poll is seen, assume stopped.
@@ -366,7 +366,7 @@ float readWheelSpeed()
 
 float readMotorRPM()
 {
-        if(USE_IMPROVED_RPM_CALCULATION) {
+        if(CAL_USE_IMPROVED_RPM_CALCULATION) {
                 float tempRpm = 0;
                 // Calculate time taken for last wheel rotation
                 if(micros() - lastMotorPollTime < 1000000) {//If it takes longer than 2s for a rotation, consider it stopped.

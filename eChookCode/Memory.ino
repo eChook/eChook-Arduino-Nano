@@ -150,17 +150,26 @@ uint8_t readBinaryCal (char byte, char bit){
 void setBinaryCal (char byte, char bit){
     char temp = EEPROM.read(byte);
     temp = temp | bit; // OR desired bit with existing data. Only targeted bit will flip to 1.
-    EEPROM.write()    
+    EEPROM.write(byte, temp)  ;  
 }
 
 void clearBinaryCal (char byte, char bit){
     char temp = EEPROM.read(byte);
     temp = temp & ~bit; // Binary AND existing byte with binary inverted target byte. Only terget bit will AND with 0 and therefore be set to 0.
-    EEPROM.write()
+    EEPROM.write(byte, temp);
 }
 
-void getFloatCal (uint8_t index){
-    float temp = 0f; // Pre define float to write to
+float getFloatCal (uint8_t index){
+    float temp = 0; // Pre define float to write to
     uint8_t address = index*4 + FLOAT_ARRAY_START; // Each float is 4 bytes, plus the array start position to locate the float.
     EEPROM.get(address, temp);
+    return temp;
+}
+
+void setVerificationByte(){
+    EEPROM.write(0,0xAA);
+}
+
+void clearVerificationByte(){
+    EEPROM.write(0,0xFF);
 }

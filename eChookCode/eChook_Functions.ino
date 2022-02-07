@@ -292,13 +292,13 @@ int readThrottle()
 
 float readTempOne()
 {
-        float temp = thermistorADCToCelcius(analogRead(TEMP1_IN_PIN)); //use the thermistor function to turn the ADC reading into a temperature
+        float temp = thermistorADCToCelcius(analogRead(TEMP1_IN_PIN), 1); //use the thermistor function to turn the ADC reading into a temperature
         return (temp); //return Temperature.
 }
 
 float readTempTwo()
 {
-        float temp = thermistorADCToCelcius(analogRead(TEMP2_IN_PIN));
+        float temp = thermistorADCToCelcius(analogRead(TEMP2_IN_PIN), 2);
         return (temp);
 }
 
@@ -419,18 +419,23 @@ float calculateGearRatio()
 // A cheaper option is to use Thermistors. The resistance across a thrmistor changes with temperature, but the change is not linear
 // so some maths is required to translate the voltage reading into a temperature value.
 // For more information see here: http://playground.arduino.cc/ComponentLib/Thermistor2
-// This method uses the Steinhart-Hart equation to calculate the actual temperature, however this requires three coefficients,
+// This method uses the Steinhart-Hart equation to calculate the actual temperature, which requires three coefficients,
 // A, B and C, that are specific to a thermistor. The ones below are for the thermistors provided with the board, however if you
 // use a different thermistor the coefficients should be given in the datasheet, and if not, can be calculated using this calculator:
 // http://www.thinksrs.com/downloads/programs/Therm%20Calc/NTCCalibrator/NTCcalculator.htm
 
-float thermistorADCToCelcius(int rawADC)
+float thermistorADCToCelcius(int rawADC, uint8_t thermNumber)
 {
         // Steinhart-Hart Coefficients, see comment above
         // These coefficients are for the MF52AT NTC 10k thermistor, however due to thermistor tolerances each thermistor should be calibrated individually.
-        const float A = CAL_THERM_A;
-        const float B = CAL_THERM_B;
-        const float C = CAL_THERM_C;
+        float A = CAL_THERM1_A;
+        float B = CAL_THERM1_B;
+        float C = CAL_THERM1_C;
+        if(thermNumber = 2){
+                A = CAL_THERM2_A;
+                B = CAL_THERM2_B;
+                C = CAL_THERM2_C;
+        }
         // Value of resistor forming potential divider with Thermistor in ohms.
         const int FIXED_RESISTOR_VALUE = 10000; //10k
         // Calculations:

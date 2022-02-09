@@ -1,8 +1,10 @@
 void eChookSetup(){
         pinSetup(); //Sets Input/Output for all pins. Function found in eChook_Functions.ino.
 
-        //Initialise debounce objects for the three buttons
-        cycleButtonDebounce.attach(CYCLE_BTN_IN_PIN);
+        
+
+            // Initialise debounce objects for the three buttons
+            cycleButtonDebounce.attach(CYCLE_BTN_IN_PIN);
         cycleButtonDebounce.interval(50); //50ms
 
         launchButtonDebounce.attach(LAUNCH_BTN_IN_PIN);
@@ -35,7 +37,8 @@ void eChookSetup(){
 
         Serial.begin(CAL_BT_BAUDRATE); // Bluetooth and USB communications
 
-
+        // Read in calibration from EEPROM memory if required
+        EEPROMSetup();
 }
 
 void pinSetup(){
@@ -75,6 +78,9 @@ void eChookRoutinesUpdate(){
         // Wheel and Motor speed are accumulated over time, so the longer time left between samples, the higher the resolution of the value.
         // As such, these are only updated ever 1 second. Temperature is a reading that will not change fast, and consumes more processing
         // time to calculate than most, so this is also checked every 1s.
+
+        SerialCheck();
+        
         static unsigned long nextThrottleReadMs = millis();
         if(millis() > nextThrottleReadMs) { // millis() gives milliseconds since power on. If this is greater than the nextThrottleReadMs we've calculated it will run.
                 nextThrottleReadMs = millis() + 100; //100 ms, 10hz

@@ -20,8 +20,8 @@
 
 
 
-//Build Options
-const int DEBUG_MODE = 0; // If debug mode is on, no data will be sent via bluetooth. This is to make any debug messages easier to see.
+
+int DEBUG_MODE = 0; // If debug mode is on, no data will be sent via bluetooth. This is to make any debug messages easier to see.
 
 // Initialise button debounces
 Bounce launchButtonDebounce = Bounce();

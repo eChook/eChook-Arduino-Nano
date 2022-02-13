@@ -29,8 +29,8 @@ float CAL_WHEEL_CIRCUMFERENCE  = 1.178;     //Outer circumference of tyre, in Me
 
 //Board Specific Calibrations
 float CAL_REFERENCE_VOLTAGE   = 5;     // Voltage seen on the arduino 5V rail
-float CAL_BATTERY_TOTAL       = 6.15;  // Multiplier for 24v calculation. Calculated by 24v Input devided by voltage on Arduino pin A0
-float CAL_BATTERY_LOWER       = 3.071; // Multiplier for 12v calculation. Calculated by 12V Input devided by voltage on Arduino pin A7
+float CAL_BATTERY_TOTAL       = 6.15;  // Multiplier for 24v calculation. Calculated by 24v Input divided by voltage on Arduino pin A0
+float CAL_BATTERY_LOWER       = 3.071; // Multiplier for 12v calculation. Calculated by 12V Input divided by voltage on Arduino pin A7
 float CAL_CURRENT             = 37.55; // Current Multiplier - See documentation for calibration method
 
 int CAL_LINEAR_TEMPERATURE = 0; //0 for Thermistors, 1 for a Linear temperature sensor.

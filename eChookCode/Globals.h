@@ -21,6 +21,7 @@ const char REF_VOLTAGE_ID      = 'V';
 float batteryVoltageTotal   = 0;
 float batteryVoltageLower   = 0;
 float throttle              = 0;
+float throttleIn            = 0;
 float current               = 0;
 float motorRPM              = 0;
 float wheelRPM              = 0;

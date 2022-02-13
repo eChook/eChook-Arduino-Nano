@@ -3,8 +3,8 @@ void eChookSetup(){
 
         
 
-            // Initialise debounce objects for the three buttons
-            cycleButtonDebounce.attach(CYCLE_BTN_IN_PIN);
+        // Initialise debounce objects for the three buttons
+        cycleButtonDebounce.attach(CYCLE_BTN_IN_PIN);
         cycleButtonDebounce.interval(50); //50ms
 
         launchButtonDebounce.attach(LAUNCH_BTN_IN_PIN);
@@ -103,7 +103,8 @@ void eChookRoutinesUpdate(){
                 current = readCurrent();
                 sendData(CURRENT_ID, current);
 
-                sendData(THROTTLE_INPUT_ID, throttle);
+                sendData(THROTTLE_INPUT_ID, throttleIn);
+                sendData(THROTTLE_ACTUAL_ID, throttle);
 
                 if(CAL_USE_IMPROVED_RPM_CALCULATION) {
                         motorRPM = readMotorRPM();
@@ -251,6 +252,7 @@ int readThrottle()
         if(CAL_THROTTLE_VARIABLE) //Analogue throttle, not push button
         {
                 tempThrottle = (tempThrottle / 1023) * CAL_REFERENCE_VOLTAGE; // Gives the actual voltage seen on the arduino Pin, assuming reference voltage of 5V
+                throttleIn = tempThrottle; //Update Global variable for throttle in voltage
                 // Serial.print(tempThrottle);
                 // Serial.print(", ");
                 //The following code adds dead bands to the start and end of the throttle travel
@@ -265,6 +267,7 @@ int readThrottle()
 
                 tempThrottle = ((tempThrottle-CAL_THROTTLE_LOW)/(float)(CAL_THROTTLE_HIGH-CAL_THROTTLE_LOW))*(255);
         }else{
+                throttleIn = (tempThrottle / 1023) * CAL_REFERENCE_VOLTAGE; // Update Global variable for throttle in voltage
                 if(tempThrottle > 200) //Approx 1v
                 {
                         tempThrottle = 255; //full throttle
@@ -274,7 +277,8 @@ int readThrottle()
                 }
         }
 
-        tempThrottle = map(tempThrottle,0,255,0,100);
+        tempThrottle = map(tempThrottle,0,255,0,100); // Convert to a percentage for ease of calculation
+        
 
         if(CAL_THROTTLE_RAMP) {
                 // This code generates a simple ramp up in throttle. The >100 is there as it will likely take about 30% throttle to get the car moving, so this will give a quicker start.
@@ -292,7 +296,7 @@ int readThrottle()
         } else{
                 currThrtlOut = tempThrottle;
         }
-        analogWrite(MOTOR_OUT_PIN, currThrtlOut); //This drives the motor output. Unless you are using the board to drive your motor you can comment it out.
+        analogWrite(MOTOR_OUT_PIN, map(currThrtlOut,0,100,0,255); //This drives the motor output. Unless you are using the board to drive your motor you can comment it out.
         return (currThrtlOut);
 }
 

@@ -16,6 +16,9 @@ const char GEAR_RATIO_ID       = 'r';
 const char BRAKE_PRESSED_ID    = 'B';
 const char REF_VOLTAGE_ID      = 'V';
 
+//Measured Reference Voltage:
+float referenceVoltage = 0;
+
 
 // Read in values:
 float batteryVoltageTotal   = 0;
@@ -30,7 +33,7 @@ float gearRatio             = 0;
 float tempOne               = 0;
 float tempTwo               = 0;
 float tempThree             = 0;
-uint8_t brake                   = 0;
+uint8_t brake               = 0;
 
 // Loop counter used for longer interval functions
 

@@ -5,15 +5,15 @@
 //    with default settings.
 //  - 4 Chars used for binary settings - eg. feature enable/disable.
 //  - An array of floats for the numerical calibrations values. (OK, not really an array, just a series of 20 floats, but thinking of it as an array may help)
-//  - A 10 char array to hold the name for the Bluetooth device.
+//  - A 20 char array to hold the name for the Bluetooth device.
 
 // The Atmega328P has 1Kb of memory. The Schema below uses:
 // 1 Byte for Validity Check.
 // 4 Bytes for binary configuration.
 // 80 Bytes for float calibrations storage. A Float is 4 Bytes, 4*20 = 80
-// 10 Bytes for Bluetooth Name Storage.
+// 30 Bytes for Bluetooth Name Storage.
 //
-// Total = 95 Bytes of 1kB total. Plenty of space!
+// Total = 125 Bytes of 1kB total. Plenty of space!
 
 // The configuraration bytes are as follows: (Big Endian Notation)
 // Byte A, General Settings (EEPROM[1]):-
@@ -63,6 +63,7 @@
 #define CAL_C 3
 #define CAL_D 4
 #define FLOAT_ARRAY_START 5
+#define NAME_ARRAY_START 86 // 5 + 20*4 + 1
 
 // Calibration Byte A Locations
 #define A_EEPROM_ENABLE 0x80
@@ -100,33 +101,30 @@ void EEPROMSetup()
 {
 
     // For testing purposes, write eeprom at each boot:
-    saveCurrCalToEeprom();
+    // saveCurrCalToEeprom();
 
-    // First check if EEPROM is valid by reading the validity Byte [0]
-    // char valid = EEPROM.read(VERIFICATION_BYTE);
-    // if (valid == 0xAA)
-    // {
-    //     // EEPROM contains valid data
-    //     valid = HIGH;
-    //     // Set calibration values from EEPROM
-    //     loadEepromCalibration();
-    // }
-    // else
-    // {
-    //     // EEPROM hasn't been Written to.
-    //     if (CAL_USE_EEPROM)
-    //     {
-    //         // Fresh arduino, need to initialise EEPROM
-    //         saveCurrCalToEeprom();
-    //     }
-    // }
+    if (!FORCE_USE_HARDCODED_CAL)
+    {
+        // First check if EEPROM is valid by reading the validity Byte [0]
+        if (getVerificationByte())
+        {
+            // EEPROM contains valid data
+            // Set calibration values from EEPROM
+            loadEepromCalibration();
+        }
+        else
+        {
+            // Fresh arduino, need to initialise EEPROM
+            saveCurrCalToEeprom();
+        }
+    }
 }
 
 void saveCurrCalToEeprom()
 {
 
     // Check and Set Verification Byte
-    if (getVerificationByte != 0xAA)
+    if (!getVerificationByte())
     {
         setVerificationByte();
     }
@@ -135,27 +133,31 @@ void saveCurrCalToEeprom()
     setBinaryCal(CAL_A, A_EEPROM_ENABLE, CAL_USE_EEPROM);
     setBinaryCal(CAL_A, A_THROTTLE_MODE, CAL_THROTTLE_VARIABLE);
     setBinaryCal(CAL_A, A_THROTTLE_RAMP, CAL_THROTTLE_RAMP);
+    setBinaryCal(CAL_A, A_PWM_ENABLE, CAL_THROTTLE_OUTPUT_EN);
+    setBinaryCal(CAL_A, A_TEMP_SENSOR_MODE, CAL_LINEAR_TEMPERATURE);
 
     setBinaryCal(CAL_D, D_RPM_NEW, CAL_USE_IMPROVED_RPM_CALCULATION);
     setBinaryCal(CAL_D, D_SPEED_NEW, CAL_USE_IMPROVED_SPEED_CALCULATION);
 
     // setFloats
-    setFloatCal(INDEX_TRANSMIT_INTERVAL, (float) CAL_DATA_TRANSMIT_INTERVAL );
-    setFloatCal(INDEX_WHEEL_MAGNETS, (float) CAL_WHEEL_MAGNETS );
-    setFloatCal(INDEX_MOTOR_MAGNETS, (float) CAL_MOTOR_MAGNETS );
-    setFloatCal(INDEX_REF_VOLTAGE, (float) CAL_REFERENCE_VOLTAGE );
-    setFloatCal(INDEX_24_VOLTAGE, (float) CAL_BATTERY_TOTAL );
-    setFloatCal(INDEX_12_VOLTAGE, (float) CAL_BATTERY_LOWER );
-    setFloatCal(INDEX_CURRENT, (float) CAL_CURRENT );
-    setFloatCal(INDEX_TEMP_1_A, (float) CAL_THERM1_A );
-    setFloatCal(INDEX_TEMP_1_B, (float) CAL_THERM1_B );
-    setFloatCal(INDEX_TEMP_1_C, (float) CAL_THERM1_C );
-    setFloatCal(INDEX_TEMP_2_A, (float) CAL_THERM2_A );
-    setFloatCal(INDEX_TEMP_2_B, (float) CAL_THERM2_B );
-    setFloatCal(INDEX_TEMP_2_C, (float) CAL_THERM2_C );
-    setFloatCal(INDEX_THROTTLE_LOW, (float) CAL_THROTTLE_LOW );
-    setFloatCal(INDEX_THROTTLE_HIGH, (float) CAL_THROTTLE_HIGH );
-    setFloatCal(INDEX_WHEEL_CIRCUMFERENCE, (float) CAL_WHEEL_CIRCUMFERENCE );
+    setFloatCal(INDEX_TRANSMIT_INTERVAL, (float)CAL_DATA_TRANSMIT_INTERVAL);
+    setFloatCal(INDEX_WHEEL_MAGNETS, (float)CAL_WHEEL_MAGNETS);
+    setFloatCal(INDEX_MOTOR_MAGNETS, (float)CAL_MOTOR_MAGNETS);
+    setFloatCal(INDEX_REF_VOLTAGE, (float)CAL_REFERENCE_VOLTAGE);
+    setFloatCal(INDEX_24_VOLTAGE, (float)CAL_BATTERY_TOTAL);
+    setFloatCal(INDEX_12_VOLTAGE, (float)CAL_BATTERY_LOWER);
+    setFloatCal(INDEX_CURRENT, (float)CAL_CURRENT);
+    setFloatCal(INDEX_TEMP_1_A, (float)CAL_THERM1_A);
+    setFloatCal(INDEX_TEMP_1_B, (float)CAL_THERM1_B);
+    setFloatCal(INDEX_TEMP_1_C, (float)CAL_THERM1_C);
+    setFloatCal(INDEX_TEMP_2_A, (float)CAL_THERM2_A);
+    setFloatCal(INDEX_TEMP_2_B, (float)CAL_THERM2_B);
+    setFloatCal(INDEX_TEMP_2_C, (float)CAL_THERM2_C);
+    setFloatCal(INDEX_THROTTLE_LOW, (float)CAL_THROTTLE_LOW);
+    setFloatCal(INDEX_THROTTLE_HIGH, (float)CAL_THROTTLE_HIGH);
+    setFloatCal(INDEX_WHEEL_CIRCUMFERENCE, (float)CAL_WHEEL_CIRCUMFERENCE);
+
+    writeBTName();
 }
 
 void loadEepromCalibration()
@@ -184,7 +186,7 @@ void loadEepromCalibration()
     CAL_THROTTLE_LOW = (int)getFloatCal(INDEX_THROTTLE_LOW);
     CAL_THROTTLE_HIGH = (int)getFloatCal(INDEX_THROTTLE_HIGH);
 
-    
+    getBTName();
 }
 
 uint8_t readBinaryCal(char byte, char bit)
@@ -244,8 +246,16 @@ float getFloatCal(uint8_t index)
 
 byte getFloatByte(uint8_t index)
 {
-    byte temp = 0;                                   // Pre define float to write to
+    byte temp = 0;                               // Pre define float to write to
     uint8_t address = index + FLOAT_ARRAY_START; // Each float is 4 bytes, plus the array start position to locate the float,
+    EEPROM.get(address, temp);
+    return temp;
+}
+
+byte getNameByte(uint8_t index)
+{
+    byte temp = 0;                              // Pre define float to write to
+    uint8_t address = index + NAME_ARRAY_START; // Each float is 4 bytes, plus the array start position to locate the float,
     EEPROM.get(address, temp);
     return temp;
 }
@@ -264,4 +274,31 @@ void setVerificationByte()
 void clearVerificationByte()
 {
     EEPROM.write(0, 0xFF);
+}
+
+void writeBTName()
+{
+    // Overwrite any previous data:
+    // for (uint8_t i = NAME_ARRAY_START; i < NAME_ARRAY_START + 30; i++)
+    // {
+    //     EEPROM.write(i, 0xff);
+    // }
+
+    char buff[30] = {0xff};
+    CAL_BT_NAME.toCharArray(buff, 30);
+    // Serial.println(buff);
+
+    EEPROM.put(NAME_ARRAY_START, buff);
+}
+
+void getBTName()
+{
+    String temp = "";
+    for (uint8_t i = 0; i < 30; i++)
+    {
+        char tmpChar = getNameByte(i);
+        if (tmpChar != 0xff)
+            temp += tmpChar;
+    }
+    CAL_BT_NAME = temp;
 }

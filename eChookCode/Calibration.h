@@ -13,6 +13,7 @@
  */
 
 //If you intend to use the online configuration/calibration too, set this to 1, to use these hard coded settings, set it to 0
+uint8_t FORCE_USE_HARDCODED_CAL = 1;
 uint8_t CAL_USE_EEPROM = 1;
 
 //Bluetooth Settings
@@ -29,6 +30,7 @@ float CAL_WHEEL_CIRCUMFERENCE  = 1.178;     //Outer circumference of tyre, in Me
 
 //Board Specific Calibrations
 float CAL_REFERENCE_VOLTAGE   = 5;     // Voltage seen on the arduino 5V rail
+float CAL_INTERNAL_REFERENCE_VOLTAGE   = 1.1;     // Voltage seen on the internal 1.1v AREF
 float CAL_BATTERY_TOTAL       = 6.15;  // Multiplier for 24v calculation. Calculated by 24v Input divided by voltage on Arduino pin A0
 float CAL_BATTERY_LOWER       = 3.071; // Multiplier for 12v calculation. Calculated by 12V Input divided by voltage on Arduino pin A7
 float CAL_CURRENT             = 37.55; // Current Multiplier - See documentation for calibration method
@@ -43,6 +45,7 @@ float CAL_THERM2_B = 0.00009436080271;
 float CAL_THERM2_C = 0.0000007954800125;
 
 //Throttle calibrations
+int CAL_THROTTLE_OUTPUT_EN = 1;
 int CAL_THROTTLE_VARIABLE = 1; // 1 for a variable throttle, 0 for a push button (on/off) throttle.
 int CAL_THROTTLE_RAMP = 0; // 1 to enable. A simple implementation of a throttle ramp up
 int CAL_THROTTLE_LOW = 1; // This voltage and below is regarded as 0% throttle

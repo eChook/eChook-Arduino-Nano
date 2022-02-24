@@ -43,7 +43,7 @@ void loop()
                                 // to read and send data on time. Find the code in
                                 // the eChook_Functions.ino file
 
-        buttonChecks(); // Checks buttons each loop, debounces and sends any changes in state
+       buttonChecks(); // Checks buttons each loop, debounces and sends any changes in state
 
         // Any new code you want to add to loop you can add below, HOWEVER avoid using
         // blocking code (anything that takes a long time to complete or uses 'delay()'

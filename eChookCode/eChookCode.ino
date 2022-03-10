@@ -1,18 +1,11 @@
-/***** ======================================================================================================================================== *****/
-/*****           ====================================================================================================================           *****/
-/*****                     ================================================================================================                     *****/
-/*****                                                                                                                                          *****/
-/*****                                                       eChook Telemetry Board Code                                                        *****/
-/*****                                                              ARDUINO NANO                                                                *****/
-/*****                                                                                                                                          *****/
-/*****                                                               IAN COOPER                                                                 *****/
-/*****                                                             ROWAN GRIFFIN                                                                *****/
-/*****                                                                BEN NAGY                                                                  *****/
-/*****                                                              MATT RUDLING                                                                *****/
-/*****                                                                                                                                          *****/
-/*****                     ================================================================================================                     *****/
-/*****           ====================================================================================================================           *****/
-/***** ======================================================================================================================================== *****/
+/* eChook GPT nano Telemetry Code
+/* Target: Arduino nano 328p OR Ardiuno nano every (Offical nano replacement)
+/* Github: https://github.com/eChook/eChook-Arduino-Nano
+/* Authors: Rowan Griffin, Ian Cooper
+/* License: GNU General Public License v3.0
+/* Suport: info@echook.uk
+/* Forum: echook.boards.net
+*/
 
 
 
@@ -25,9 +18,18 @@
 #include "Calibration.h"
 
 /** ================================== */
-/** COMPILER DEFINITIONS               */
+/** Processor Detection                */
 /** ================================== */
-#define arr_len( x ) (sizeof( x ) / sizeof ( *x ) )
+// Detects if board is an Arduino Nano Every, sets flags to change code accordingly.
+#if defined(__AVR_ATMega4809__)
+  #define NANO_EVERY
+  // References Serial1 to SerialA for the Arduino Nano Every
+  HardwareSerial &SerialA = Serial1;
+#else
+  // References Serial to SerialA for the Arduino Nano 328p 
+  HardwareSerial &SerialA = Serial;
+#endif
+
 
 /** ================================== */
 /** BUILD OPTIONS                      */
@@ -53,13 +55,9 @@ const int   CYCLE_BTN_IN_PIN    = 12;   // Digital input pin for cycle view butt
 /** ___________________________________________________________________________________________________ DIGITAL INTERRUPT PINS */
 const int   MOTOR_RPM_PIN       = 2;    // Digital interrupt for motor pulses
 const int   WHEEL_RPM_PIN       = 3;    // Digital interrupt for wheel pulses
-const int   FAN_RPM_PIN         = 13;   // Digital interrupt for motor pulses
 
 /** ___________________________________________________________________________________________________ DIGITAL AND PWM OUTPUT PINS */
 const int   MOTOR_OUT_PIN       = 5;   // PWM output to the motor
-const int   LED_1_OUT_PIN       = 6;   // PWM Output for LED 1
-const int   LED_2_OUT_PIN       = 9;   // PWM Output for LED 2
-const int   FAN_OUT_PIN         = 11;  // PWM output to the fan(s)
 
 
 /** ________________________________________________________________________________________ BLUETOOTH CONSTANTS */
@@ -68,23 +66,23 @@ const String  BT_NAME           = CAL_BT_NAME;      // Name of the bluetooth mod
 const String  BT_PASSWORD       = CAL_BT_PASSWORD;  // Pairing Password
 const long    BT_BAUDRATE       = 115200;           // Baud Rate to run at. Must match Arduino's baud rate.
 
-//Bluetooth module uses hardware serial from Arduino, so Arduino Tx -> HC05 Rx, Ard Rx -> HC Tx. EN and Status are disconnected.
+//Bluetooth module uses hardware serialA from Arduino, so Arduino Tx -> HC05 Rx, Ard Rx -> HC Tx. EN and Status are disconnected.
 
 
 /** ________________________________________________________________________________________ CONSTANTS */
 /* DATA TRANSMIT INTERVALS */
-const unsigned long     SHORT_DATA_TRANSMIT_INTERVAL     = 250;     // transmit interval in ms
+const unsigned long  SHORT_DATA_TRANSMIT_INTERVAL = 250;     // transmit interval in ms
 
 /* CURRENT */
-const int               AMPSENSOR_CAL_DELAY              = 3000;    // calibration delay for current sensor (ms)
+const int AMPSENSOR_CAL_DELAY  = 3000;    // calibration delay for current sensor (ms)
 
 
 
 
 /** ___________________________________________________________________________________________________ DATA IDENTIFIERS */
-/**
- *  If these are altered the data will no longer be read correctly by the phone.
- */
+
+// If these are altered the data will no longer be read correctly by the phone.
+
 
 const char SPEED_ID            = 's';
 const char MOTOR_ID            = 'm';
@@ -192,11 +190,8 @@ void setup()
 
   //Set up pin modes for all inputs and outputs
   pinMode(MOTOR_OUT_PIN,        OUTPUT);
-  digitalWrite(MOTOR_OUT_PIN,   LOW);  // Ensure motor is not driven on startup
-  pinMode(FAN_OUT_PIN,          OUTPUT);
-  digitalWrite(FAN_OUT_PIN,     LOW);  // Ensure fan is not driven on startup
-  pinMode(LED_1_OUT_PIN,        OUTPUT);
-  pinMode(LED_2_OUT_PIN,        OUTPUT);
+  digitalWrite(MOTOR_OUT_PIN,   LOW);  // Ensure motor is not driven on startup  
+  pinMode(LED_BUILTIN,          OUTPUT); 
 
   pinMode(VBATT_IN_PIN,     	  INPUT);
   pinMode(VBATT1_IN_PIN,      	INPUT);
@@ -218,10 +213,13 @@ void setup()
    * https://www.arduino.cc/en/Reference/AttachInterrupt
   */
 
-  attachInterrupt(0, motorSpeedISR, RISING);
-  attachInterrupt(1, wheelSpeedISR, RISING);
-  //FAN_RPM_PIN is connected to a pin that can't be used as an interrupt with arduino libraries
-  //so requires some different code.
+  #ifdef NANO_EVERY
+    attachInterrupt(2, motorSpeedISR, RISING);
+    attachInterrupt(3, wheelSpeedISR, RISING);
+  #else
+    attachInterrupt(0, motorSpeedISR, RISING);
+    attachInterrupt(1, wheelSpeedISR, RISING);
+  #endif
 
   //Initialise debounce objects
   cycleButtonDebounce.attach(CYCLE_BTN_IN_PIN);
@@ -257,9 +255,9 @@ void setup()
 
 
   /**
-   * Initialise Serial Communication
+   * Initialise SerialA Communication
    * If communication over bluetooth is not working or the results are garbled it is likely the
-   * baud rate set here (number in brakcets after Serial.begin) and the baud rate of the bluetooth
+   * baud rate set here (number in brakcets after SerialA.begin) and the baud rate of the bluetooth
    * module aren't set the same.
    *
    * A good tutorial for altering the HC-05 Bluetooth Module parameters is here:
@@ -278,7 +276,7 @@ void setup()
     configureBluetooth(); // If AT mode is set, configure according to the BT_xxx constants defined above
   }
 
-  Serial.begin(BT_BAUDRATE);    // Bluetooth and USB communications
+  SerialA.begin(BT_BAUDRATE);    // Bluetooth and USB communications
 
   lastShortDataSendTime = millis(); //Give the timing a start value.
 
@@ -323,21 +321,18 @@ void loop()
     {
       tempOne = readTempOne();
       sendData(TEMP1_ID, tempOne);
-      digitalWrite(13, HIGH); //these are just flashing the LEDs as visual confimarion of the loop
-      digitalWrite(9, HIGH);
+      digitalWrite(LED_BUILTIN, HIGH); //these are just flashing the LEDs as visual confimarion of the loop
     }
 
     if (loopCounter == 2)
     {
       tempTwo = readTempTwo();
       sendData(TEMP2_ID, tempTwo);
-      digitalWrite(6, HIGH);
     }
 
     if (loopCounter == 3)
     { //nothing actaully needed to do at .75 seconds
-      digitalWrite(13, LOW);
-      digitalWrite(9, LOW);
+      digitalWrite(LED_BUILTIN, LOW);
     }
 
     if (loopCounter == 4)
@@ -352,13 +347,9 @@ void loop()
 
       gearRatio = calculateGearRatio();
       sendData(GEAR_RATIO_ID, gearRatio);
-
-      digitalWrite(6, LOW);
     }
 
   }
-
-
 }
 
 void buttonChecks()
@@ -367,48 +358,33 @@ void buttonChecks()
   launchButtonDebounce.update();
   brakeButtonDebounce.update();
 
-  int cycleButtonState = !cycleButtonDebounce.read(); //Buttons are LOW when pressed, ! inverts this, so state is HIGH when pressed
-  if(cycleButtonState != cycleButtonPrevious) //Button has changed state - either pressed or depressed
-  {
-    if(cycleButtonState == HIGH) //Button Pressed
-    {
+  
+  if(cycleButtonDebounce.changed()){
+    if(cycleButtonDebounce.read()){ // if state is high, button is released
+      // sendData(CYCLE_VIEW_ID, 0); // Placeholder - sent value will matter in a future app release.
+    }else{
       sendData(CYCLE_VIEW_ID, 1); // Actual packet content is irrelevant - sending a packet with the ID represents a button press
     }
-
-    //Don't care when button is released
-
-    cycleButtonPrevious = cycleButtonState; //Update previous state
   }
+  
 
-  int launchButtonState = !launchButtonDebounce.read(); //Buttons are LOW when pressed, ! inverts this, so state is HIGH when pressed
-  if(launchButtonState != launchButtonPrevious) //Button has changed state - either pressed or depressed
-  {
-    if(launchButtonState == HIGH) //Button Pressed
-    {
+  if(launchButtonDebounce.changed()){
+    if(launchButtonDebounce.read()){ // if state is high, button is released
+      // sendData(LAUNCH_MODE_ID, 0); // Placeholder - sent value will matter in a future app release.
+    }else{
       sendData(LAUNCH_MODE_ID, 1); // Actual packet content is irrelevant - sending a packet with the ID represents a button press
     }
-
-    //Don't care when button is released
-
-    launchButtonPrevious = launchButtonState; //Update previous state
   }
 
-  int brakeButtonState = !brakeButtonDebounce.read(); //Buttons are LOW when pressed, ! inverts this, so state is HIGH when pressed
-  if(brakeButtonState != brakeButtonPrevious) //Button has changed state - either pressed or depressed
-  {
-    if(brakeButtonState == HIGH) //Button Pressed
-    {
-      sendData(BRAKE_PRESSED_ID, 100);
+  if(brakeButtonDebounce.changed()){
+    if(brakeButtonDebounce.read()){ // if state is high, button is released
+      sendData(BRAKE_PRESSED_ID, 0); // Placeholder - sent value will matter in a future app release.
+    }else{
+      sendData(BRAKE_PRESSED_ID, 1); // Actual packet content is irrelevant - sending a packet with the ID represents a button press
     }
-    else if(brakeButtonState == LOW) //Button Released
-    {
-     sendData(BRAKE_PRESSED_ID, 0);
-    }
-
-    brakeButtonPrevious = brakeButtonState; //Update previous state
   }
-
 }
+
 
 /**
  * Sensor Reading Functions
@@ -697,10 +673,10 @@ float thermistorADCToCelcius(int rawADC)
 
   if (DEBUG_MODE)
   {
-    Serial.print("\n\rThemistore Resistance = ");
-    Serial.println(thermistorResistance);
-    Serial.print("Temperature = ");
-    Serial.println(temperature);
+    SerialA.print("\n\rThemistore Resistance = ");
+    SerialA.println(thermistorResistance);
+    SerialA.print("Temperature = ");
+    SerialA.println(temperature);
   }
 
 
@@ -732,7 +708,7 @@ void sendData(char identifier, float value)
 
     if (value == 0)
     {
-      // It is impossible to send null bytes over Serial connection
+      // It is impossible to send null bytes over SerialA connection
       // so instead we define zero as 0xFF or 11111111 i.e. 255
       dataByte1 = 0xFF;
       dataByte2 = 0xFF;
@@ -791,11 +767,11 @@ void sendData(char identifier, float value)
     }
 
     // Send the data in the format { [id] [1] [2] }
-    Serial.write(123);
-    Serial.write(identifier);
-    Serial.write(dataByte1);
-    Serial.write(dataByte2);
-    Serial.write(125);
+    SerialA.write(123);
+    SerialA.write(identifier);
+    SerialA.write(dataByte1);
+    SerialA.write(dataByte2);
+    SerialA.write(125);
 
   }
 
@@ -844,11 +820,11 @@ void sendData(char identifier, int value)
       }
     }
 
-    Serial.write(123);
-    Serial.write(identifier);
-    Serial.write(dataByte1);
-    Serial.write(dataByte2);
-    Serial.write(125);
+    SerialA.write(123);
+    SerialA.write(identifier);
+    SerialA.write(dataByte1);
+    SerialA.write(dataByte2);
+    SerialA.write(125);
   }
 
 }
@@ -864,51 +840,51 @@ int checkBtAtMode() //Checks if the HC-05 Bluetooth module is in AT mode. Return
 
   int atMode = 0;
 
-  Serial.begin(38400); //AT mode baud rate
+  SerialA.begin(38400); //AT mode baud rate
 
-  while(!Serial){} //Wait for serial to initialise
+  while(!SerialA){} //Wait for serialA to initialise
 
   delay(200);
 
-  Serial.print("AT\r\n"); // for some reason when AT is sent the first time, an error is always returned.
+  SerialA.print("AT\r\n"); // for some reason when AT is sent the first time, an error is always returned.
 
   delay(200); //wait for response
 
-  //    Serial.flush(); // Flush the response to the first AT query
-  flushSerial();
+  //    SerialA.flush(); // Flush the response to the first AT query
+  flushSerialA();
 
-  while (Serial.available()) // to check if the flush worked
+  while (SerialA.available()) // to check if the flush worked
   {
-    Serial.println((char)Serial.read());
+    SerialA.println((char)SerialA.read());
   }
 
-  //Serial.println("End of flush check");
-  Serial.println("AT");
+  //SerialA.println("End of flush check");
+  SerialA.println("AT");
 
   delay(200);
 
-  char tempOne = (char)Serial.read();
+  char tempOne = (char)SerialA.read();
   delay(20);
-  char tempTwo = (char)Serial.read();
+  char tempTwo = (char)SerialA.read();
 
   if (tempOne == 'O' && tempTwo == 'K') //Was the response "OK"?
   {
-    //    Serial.println("AT Mode Confirmed");
+    //    SerialA.println("AT Mode Confirmed");
     digitalWrite(13, HIGH);
     atMode = 1;
   }
   else
   {
-    //    Serial.println("AT Mode NOT Confirmed");
-    //    Serial.print("Char 1 = ");
-    //    Serial.print(tempOne);
-    //    Serial.print("Char 2 = ");
-    //    Serial.println(tempTwo);
+    //    SerialA.println("AT Mode NOT Confirmed");
+    //    SerialA.print("Char 1 = ");
+    //    SerialA.print(tempOne);
+    //    SerialA.print("Char 2 = ");
+    //    SerialA.println(tempTwo);
 
   }
 
-  Serial.begin(BT_BAUDRATE); //reset baud rate
-  while (!Serial) {} //wait while serial is inialising
+  SerialA.begin(BT_BAUDRATE); //reset baud rate
+  while (!SerialA) {} //wait while serialA is inialising
 
   return (atMode);
 }
@@ -918,7 +894,7 @@ void configureBluetooth()
 {
   //Assumes AT mode has been confirmed.
 
-  Serial.begin(38400);
+  SerialA.begin(38400);
 
   uint8_t btNameSet = 0; //These will be set to 1 when each is successfully updated
   uint8_t btBaudSet = 0;
@@ -926,104 +902,104 @@ void configureBluetooth()
 
   //Set Bluetooth Name
 
-  flushSerial();// Flush the buffer. Not entirely sure what is in there to flush at this point, but it is needed!
-  Serial.print("AT+NAME=");
-  Serial.print(BT_NAME);
-  Serial.print("\r\n");
+  flushSerialA();// Flush the buffer. Not entirely sure what is in there to flush at this point, but it is needed!
+  SerialA.print("AT+NAME=");
+  SerialA.print(BT_NAME);
+  SerialA.print("\r\n");
 
   //Now Check Response
 
-  waitForSerial(500);
+  waitForSerialA(500);
 
-  char tempOne = (char)Serial.read();
+  char tempOne = (char)SerialA.read();
 
-  waitForSerial(500);
+  waitForSerialA(500);
 
-  char tempTwo = (char)Serial.read();
+  char tempTwo = (char)SerialA.read();
 
 
   if (tempOne == 'O' && tempTwo == 'K') //Was the response "OK"?
   {
-    Serial.println("Name Set");
+    SerialA.println("Name Set");
     btNameSet = 1;
   }
   else
   {
-    Serial.println("Name Not Set");
-    Serial.print("Char 1 = ");
-    Serial.println(tempOne);
-    Serial.print("Char 2 = ");
-    Serial.print(tempTwo);
-    Serial.print("\r\n");
+    SerialA.println("Name Not Set");
+    SerialA.print("Char 1 = ");
+    SerialA.println(tempOne);
+    SerialA.print("Char 2 = ");
+    SerialA.print(tempTwo);
+    SerialA.print("\r\n");
   }
 
   //Set Baud Rate_____________________________________________
   delay(100);
-  //Serial.flush();
-  flushSerial();
-  Serial.print("AT+UART="); //command to change BAUD rate
-  Serial.print(BT_BAUDRATE); // overflowed when baud rate was an int
-  //Serial.print(115200); //Convert the integer constant baud rate into a string BT_BAUDRATE
-  Serial.println(",0,0"); //Parity and Stop bits
+  //SerialA.flush();
+  flushSerialA();
+  SerialA.print("AT+UART="); //command to change BAUD rate
+  SerialA.print(BT_BAUDRATE); // overflowed when baud rate was an int
+  //SerialA.print(115200); //Convert the integer constant baud rate into a string BT_BAUDRATE
+  SerialA.println(",0,0"); //Parity and Stop bits
 
   //Now Check Response.
 
-  waitForSerial(500);
+  waitForSerialA(500);
 
-  tempOne = (char)Serial.read();
+  tempOne = (char)SerialA.read();
 
-  waitForSerial(500);
+  waitForSerialA(500);
 
-  tempTwo = (char)Serial.read();
+  tempTwo = (char)SerialA.read();
 
 
   if (tempOne == 'O' && tempTwo == 'K') //Was the response "OK"?
   {
-    Serial.println("Baud Rate Set");
+    SerialA.println("Baud Rate Set");
     btBaudSet = 1;
   }
   else
   {
-    Serial.println("Baud Rate Not Set");
-    Serial.print("Char 1 = ");
-    Serial.println(tempOne);
-    Serial.print("Char 2 = ");
-    Serial.println(tempTwo);
+    SerialA.println("Baud Rate Not Set");
+    SerialA.print("Char 1 = ");
+    SerialA.println(tempOne);
+    SerialA.print("Char 2 = ");
+    SerialA.println(tempTwo);
   }
 
 
 //Set Password_____________________________________________ Not working - leaving for now
 
-//    flushSerial();
-//    Serial.print("AT+PSWD="); //command to change Password
-//    //  Serial.println(BT_PASSWORD);
-//    Serial.print("1234");
-//    Serial.print("\r\n");
+//    flushSerialA();
+//    SerialA.print("AT+PSWD="); //command to change Password
+//    //  SerialA.println(BT_PASSWORD);
+//    SerialA.print("1234");
+//    SerialA.print("\r\n");
 //
-//    waitForSerial(1000);
+//    waitForSerialA(1000);
 //
-//    tempOne = (char)Serial.read();
+//    tempOne = (char)SerialA.read();
 //
-//    waitForSerial(500);
+//    waitForSerialA(500);
 //
-//    tempTwo = (char)Serial.read();
+//    tempTwo = (char)SerialA.read();
 //
 //
 //    if (tempOne == 'O' && tempTwo == 'K') //Was the response "OK"?
 //    {
-//      Serial.println("Password Set");
+//      SerialA.println("Password Set");
 //      btPasswordSet = 1;
 //    }
 //    else
 //    {
-//      Serial.println("Password Not Set");
+//      SerialA.println("Password Not Set");
 //    }
 
 
   // Check all operations completed successfully
   if (btBaudSet && btNameSet)// && btPasswordSet)
   {
-    flushSerial();
+    flushSerialA();
     digitalWrite(13, HIGH);
     delay(200);
     digitalWrite(13, LOW);
@@ -1032,7 +1008,7 @@ void configureBluetooth()
     delay(200);
     digitalWrite(13, LOW);
     delay(200);
-    Serial.println("AT+RESET\r\n"); // has to be in the middle to provide a suitable delay before and after
+    SerialA.println("AT+RESET\r\n"); // has to be in the middle to provide a suitable delay before and after
     digitalWrite(13, HIGH);
     delay(200);
     digitalWrite(13, LOW);
@@ -1056,24 +1032,24 @@ void configureBluetooth()
     }
   }
 
-  Serial.begin(BT_BAUDRATE);
+  SerialA.begin(BT_BAUDRATE);
 }
 
 
-void flushSerial()
+void flushSerialA()
 {
-  while (Serial.available())
+  while (SerialA.available())
   {
-    char temp = Serial.read();
+    char temp = SerialA.read();
   }
 }
 
-void waitForSerial(int timeOut)
+void waitForSerialA(int timeOut)
 {
   long tempTime = millis() + timeOut;
 
-  while (!Serial.available() && millis() < tempTime)
-  {} //Do nothing - i.e. wait until serial becomes availble or the timeout is reached.
+  while (!SerialA.available() && millis() < tempTime)
+  {} //Do nothing - i.e. wait until serialA becomes availble or the timeout is reached.
 }
 
 /** ================================== */
@@ -1096,7 +1072,3 @@ void wheelSpeedISR()
   wheelPoll++;
 }
 
-void fanSpeedISR()
-{
-  fanPoll++;
-}

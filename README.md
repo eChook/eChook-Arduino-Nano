@@ -7,11 +7,13 @@ It is also possible to use an Arduino Micro on the eChook board, however code wi
 The main documentation for the eChook is hosted at [docs.echook.uk](https://docs.echook.uk). 
 ## Usage
 To run this code you will require the [Bounce2](https://github.com/thomasfredericks/Bounce2) library.  
-If you are updating to the new code please ensure your `Calibration.h` file is backedup. Enjoy :)
+If you are updating to the new code please ensure your `Calibration.h` file is backed up.
 
 ## Changelog
 
-12/2/19: Fixed bug that made speed read at 1/3 of actual (Thanks Apex Racing!)
+10/03/22: Tidied Button reading functions to better utilise the Bounce2 Library
+10/03/22: Added compatibility with the Arduino Nano Every board, which is the official replacement for the venerable Arduino Nano 328p
+12/02/19: Fixed bug that made speed read at 1/3 of actual (Thanks Apex Racing!)
 
 ## Modifications
 Some people have already modified the eChook to make it work exactly how they want! If you have any modifications of your own you want to share get in touch and we'll add them here.

@@ -11,9 +11,9 @@ If you are updating to the new code please ensure your `Calibration.h` file is b
 
 ## Changelog
 
-10/03/22: Tidied Button reading functions to better utilise the Bounce2 Library
-10/03/22: Added compatibility with the Arduino Nano Every board, which is the official replacement for the venerable Arduino Nano 328p
-12/02/19: Fixed bug that made speed read at 1/3 of actual (Thanks Apex Racing!)
+- 10/03/22: Tidied Button reading functions to better utilise the Bounce2 Library
+- 10/03/22: Added compatibility with the Arduino Nano Every board, which is the official replacement for the venerable Arduino Nano 328p
+- 12/02/19: Fixed bug that made speed read at 1/3 of actual (Thanks Apex Racing!)
 
 ## Modifications
 Some people have already modified the eChook to make it work exactly how they want! If you have any modifications of your own you want to share get in touch and we'll add them here.

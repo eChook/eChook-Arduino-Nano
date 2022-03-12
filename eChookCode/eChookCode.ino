@@ -21,7 +21,7 @@
 /** Processor Detection                */
 /** ================================== */
 // Detects if board is an Arduino Nano Every, sets flags to change code accordingly.
-#if defined(__AVR_ATMega4809__)
+#if defined(__AVR_ATmega4809__)
   #define NANO_EVERY
   // References Serial1 to SerialA for the Arduino Nano Every
   HardwareSerial &SerialA = Serial1;
@@ -129,10 +129,6 @@ volatile unsigned long fanPoll        = 0;
 Bounce launchButtonDebounce = Bounce();
 Bounce cycleButtonDebounce  = Bounce();
 Bounce brakeButtonDebounce  = Bounce();
-int cycleButtonPrevious   = LOW; // Track state so that a button press can be acted upon once
-int launchButtonPrevious  = LOW; // Track state so that a button press can be acted upon once
-int brakeButtonPrevious   = LOW; // Track state so that a button press can be acted upon once
-
 
 /** ___________________________________________________________________________________________________ Sensor Readings */
 
@@ -187,6 +183,9 @@ int speedSmoothingCount = 0;
 /** ================================== */
 void setup()
 {
+
+  
+  
 
   //Set up pin modes for all inputs and outputs
   pinMode(MOTOR_OUT_PIN,        OUTPUT);
@@ -1071,4 +1070,3 @@ void wheelSpeedISR()
 {
   wheelPoll++;
 }
-

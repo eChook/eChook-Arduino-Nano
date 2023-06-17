@@ -1,5 +1,5 @@
 // This file handles all serial transactions that aren't simple 'send data' transactions.
-// Primarily this is for the new (2022) calibration techniques.
+// Primarily this is for the new calibration website.
 
 void SerialCheck()
 {
@@ -154,7 +154,7 @@ void receiveBTName()
 
         writeBTName();// Writes the new name to EEPROM
         loadEepromCalibration(); // Reloads dynamic calibration from EEPROM
-        sendBTName(); // Sends out eeprom contentss
+        sendBTName(); // Sends out eeprom contents
     }
 }
 
@@ -183,7 +183,7 @@ void receiveFloatCal()
         EEPROM.put(FLOAT_ARRAY_START, inBuff);
 
         loadEepromCalibration(); // Reloads dynamic calibration from EEPROM
-        sendFloatCal();            // Sends out eeprom contentss
+        sendFloatCal();            // Sends out eeprom contents
     }
 }
 

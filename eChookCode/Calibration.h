@@ -13,7 +13,7 @@
  */
 
 //If you intend to use the online configuration/calibration too, set this to 1, to use these hard coded settings, set it to 0
-uint8_t FORCE_USE_HARDCODED_CAL = 1;
+uint8_t FORCE_USE_HARDCODED_CAL = 0;
 uint8_t CAL_USE_EEPROM = 1;
 
 //Bluetooth Settings
@@ -56,5 +56,5 @@ int CAL_THROTTLE_HIGH = 4; // This voltage and above is regarded as 100% throttl
 // Enabling these might break things :)
 
 // These may break if the vehicle isn't moving
-int CAL_USE_IMPROVED_RPM_CALCULATION = 1; // Will work best with one magnet on the motor shaft
-int CAL_USE_IMPROVED_SPEED_CALCULATION = 1; // Will work best with one magnet on the wheel
+int CAL_USE_IMPROVED_RPM_CALCULATION = 0; // Will work best with one magnet on the motor shaft
+int CAL_USE_IMPROVED_SPEED_CALCULATION = 0; // Will work best with one magnet on the wheel

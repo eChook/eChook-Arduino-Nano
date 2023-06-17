@@ -18,8 +18,15 @@
 #include "Pinout.h"
 #include "Globals.h"
 
-
-
+// Detects if board is an Arduino Nano Every, sets flags to change code accordingly.
+#if defined(__AVR_ATmega4809__)
+  #define NANO_EVERY
+  // References Serial1 to SerialA for the Arduino Nano Every
+  HardwareSerial &SerialA = Serial1;
+#else
+  // References Serial to SerialA for the Arduino Nano 328p 
+  HardwareSerial &SerialA = Serial;
+#endif
 
 int DEBUG_MODE = 0; // If debug mode is on, no data will be sent via bluetooth. This is to make any debug messages easier to see.
 

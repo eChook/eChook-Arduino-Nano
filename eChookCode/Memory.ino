@@ -165,6 +165,7 @@ void loadEepromCalibration()
 
     CAL_USE_EEPROM = readBinaryCal(CAL_A, A_EEPROM_ENABLE);
     CAL_THROTTLE_VARIABLE = readBinaryCal(CAL_A, A_THROTTLE_MODE);
+    CAL_THROTTLE_OUTPUT_EN = readBinaryCal(CAL_A, A_PWM_ENABLE);
     CAL_THROTTLE_RAMP = readBinaryCal(CAL_A, A_THROTTLE_RAMP);
     CAL_USE_IMPROVED_RPM_CALCULATION = readBinaryCal(CAL_D, D_RPM_NEW);
     CAL_USE_IMPROVED_SPEED_CALCULATION = readBinaryCal(CAL_D, D_SPEED_NEW); // Will work best with one magnet on the wheel

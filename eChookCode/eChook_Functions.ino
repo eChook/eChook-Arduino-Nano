@@ -315,10 +315,10 @@ int readThrottle() {
   } else {
     currThrtlOut = tempThrottle;
   }
-  if (CAL_THROTTLE_OUTPUT_EN){
+  if (CAL_THROTTLE_OUTPUT_EN) {
     analogWrite(MOTOR_OUT_PIN, currThrtlOut);  // This drives the motor output. Unless you are using the board to drive your motor you can comment it out.
-  }else{
-    analogWrite(MOTOR_OUT_PIN,0);
+  } else {
+    analogWrite(MOTOR_OUT_PIN, 0);
   }
   return (map(currThrtlOut, 0, 255, 0, 100));
 }
@@ -358,105 +358,114 @@ float readTempInternal(void) {
   // The returned temperature is in degrees Celsius.
   // eChook Measured offset
   t = t - 7;
-  return (t);
+  return (t > 0 ? t : 0);
 }
 
 float readWheelSpeed() {
-  float wheelSpeedMetersPerSecond = 0;
+  if (CAL_WHEEL_MAGNETS > 0) {  //Only run if number of wheel magnets is greater than 0. Protects against a divide by 0 crash.
+    float wheelSpeedMetersPerSecond = 0;
 
-  if (CAL_USE_IMPROVED_SPEED_CALCULATION) {  // Two ways to calculate wheel RPM
-    // Calculate time taken for last wheel rotation
-    float wheelRPS = 0;
-    if (millis() - lastWheelPollTime < 2000) {                        // if over 2 seconds since a poll is seen, assume stopped.
-      if (lastWheelInterval < 2000) {                                 // catches the case of first pulse in a while
-        long fullRotationMs = lastWheelInterval * CAL_WHEEL_MAGNETS;  // Ideally one motor magnet
-        wheelRPS = (float)1000 / fullRotationMs;                      // 1 second, divided by time of one rotation at current speed
+    if (CAL_USE_IMPROVED_SPEED_CALCULATION) {  // Two ways to calculate wheel RPM
+      // Calculate time taken for last wheel rotation
+      float wheelRPS = 0;
+      if (millis() - lastWheelPollTime < 2000) {                        // if over 2 seconds since a poll is seen, assume stopped.
+        if (lastWheelInterval < 2000) {                                 // catches the case of first pulse in a while
+          long fullRotationMs = lastWheelInterval * CAL_WHEEL_MAGNETS;  // Ideally one motor magnet
+          wheelRPS = (float)1000 / fullRotationMs;                      // 1 second, divided by time of one rotation at current speed
+        }
+      } else {
+        wheelRPS = 0;
       }
+      wheelSpeedMetersPerSecond = wheelRPS * (float)CAL_WHEEL_CIRCUMFERENCE;
     } else {
-      wheelRPS = 0;
+      static unsigned long lastWheelSpeedPollTime = 0;
+      // Counts the number of magnet passesdetected since the last wheel speed check,
+      //  converts to a speed in meters per second and returns that value.
+      //  Also updates the global wheel RPM value each call.
+
+      // First action is to take readings and reset the wheel count so that there are no change to the variables during the calculations or between reading and resetting:
+      int tempWheelPoll = wheelPoll;
+      wheelPoll = 0;
+      unsigned long tempLastWheelPollTime = lastWheelSpeedPollTime;
+      unsigned long tempWheelPollTime = millis();
+      lastWheelSpeedPollTime = tempWheelPollTime;
+      // Wheel RMP has been tacked into this function at a later date, so could do with re-writing really...
+      // Wheel RMP Calculations:
+      wheelRPM = (float)tempWheelPoll / (float)CAL_WHEEL_MAGNETS;                                   // gives number of rotations
+      wheelRPM = wheelRPM / ((float)(tempWheelPollTime - tempLastWheelPollTime) / (float)60000.0);  // /60,000 converts millis to minutes
+
+      // All integers in the folowing equation are cast to float so that the value is not converted to an integer at any point reducing accuracy through rounding.
+      // Next task is to calculate the distance travelled. This is dome by takin the wheel poll, which is the number of magnets that have passed the sensor since the last check
+      // and dividing it by the number of wheel magnets to give the number of revolutions, then multiply by the circumference to give distance travelled in meters:
+      float wheelDistanceTravelled = (float)tempWheelPoll / (float)CAL_WHEEL_MAGNETS * (float)CAL_WHEEL_CIRCUMFERENCE;
+      // Now determine how much time in seconds it took to travel this distance, and divide the distanve by time to get speed in meters per second.
+      wheelSpeedMetersPerSecond = wheelDistanceTravelled / ((float)(tempWheelPollTime - tempLastWheelPollTime) / (float)1000.0);  // the /1000 converts the milliseconds to seconds
     }
-    wheelSpeedMetersPerSecond = wheelRPS * (float)CAL_WHEEL_CIRCUMFERENCE;
+
+
+    // Next section of code handles the smooting:
+    speedSmoothingArray[speedSmoothingCount] = wheelSpeedMetersPerSecond;  // adds current speed into oldest position in array
+    speedSmoothingCount++;                                                 // incrememnts array position for next reading
+    if (speedSmoothingCount >= speedSmoothingSetting) {
+      speedSmoothingCount = 0;  // reset if count exceeds array length
+    }
+    wheelSpeedMetersPerSecond = 0;  // reset variable ready to sum array
+    for (int i = 0; i < speedSmoothingSetting; i++) {
+      wheelSpeedMetersPerSecond += speedSmoothingArray[i];
+    }
+    wheelSpeedMetersPerSecond = wheelSpeedMetersPerSecond / speedSmoothingSetting;  // divide summed figure by array count to get mean value
+    // SerialA.print("Speed MPS = ");
+    // SerialA.println(wheelSpeedMetersPerSecond);
+    return (wheelSpeedMetersPerSecond);  // return smoothed value
   } else {
-    static unsigned long lastWheelSpeedPollTime = 0;
-    // Counts the number of magnet passesdetected since the last wheel speed check,
-    //  converts to a speed in meters per second and returns that value.
-    //  Also updates the global wheel RPM value each call.
-
-    // First action is to take readings and reset the wheel count so that there are no change to the variables during the calculations or between reading and resetting:
-    int tempWheelPoll = wheelPoll;
-    wheelPoll = 0;
-    unsigned long tempLastWheelPollTime = lastWheelSpeedPollTime;
-    unsigned long tempWheelPollTime = millis();
-    lastWheelSpeedPollTime = tempWheelPollTime;
-    // Wheel RMP has been tacked into this function at a later date, so could do with re-writing really...
-    // Wheel RMP Calculations:
-    wheelRPM = (float)tempWheelPoll / (float)CAL_WHEEL_MAGNETS;                                   // gives number of rotations
-    wheelRPM = wheelRPM / ((float)(tempWheelPollTime - tempLastWheelPollTime) / (float)60000.0);  // /60,000 converts millis to minutes
-
-    // All integers in the folowing equation are cast to float so that the value is not converted to an integer at any point reducing accuracy through rounding.
-    // Next task is to calculate the distance travelled. This is dome by takin the wheel poll, which is the number of magnets that have passed the sensor since the last check
-    // and dividing it by the number of wheel magnets to give the number of revolutions, then multiply by the circumference to give distance travelled in meters:
-    float wheelDistanceTravelled = (float)tempWheelPoll / (float)CAL_WHEEL_MAGNETS * (float)CAL_WHEEL_CIRCUMFERENCE;
-    // Now determine how much time in seconds it took to travel this distance, and divide the distanve by time to get speed in meters per second.
-    wheelSpeedMetersPerSecond = wheelDistanceTravelled / ((float)(tempWheelPollTime - tempLastWheelPollTime) / (float)1000.0);  // the /1000 converts the milliseconds to seconds
+    return (0);  // Num wheel magnets is 0
   }
-
-  // Next section of code handles the smooting:
-  speedSmoothingArray[speedSmoothingCount] = wheelSpeedMetersPerSecond;  // adds current speed into oldest position in array
-  speedSmoothingCount++;                                                 // incrememnts array position for next reading
-  if (speedSmoothingCount >= speedSmoothingSetting) {
-    speedSmoothingCount = 0;  // reset if count exceeds array length
-  }
-  wheelSpeedMetersPerSecond = 0;  // reset variable ready to sum array
-  for (int i = 0; i < speedSmoothingSetting; i++) {
-    wheelSpeedMetersPerSecond += speedSmoothingArray[i];
-  }
-  wheelSpeedMetersPerSecond = wheelSpeedMetersPerSecond / speedSmoothingSetting;  // divide summed figure by array count to get mean value
-  // SerialA.print("Speed MPS = ");
-  // SerialA.println(wheelSpeedMetersPerSecond);
-  return (wheelSpeedMetersPerSecond);  // return smoothed value
 }
 
 float readMotorRPM() {
-  if (CAL_USE_IMPROVED_RPM_CALCULATION) {
-    float tempRpm = 0;
-    // Calculate time taken for last wheel rotation
-    if (micros() - lastMotorPollTime < 1000000) {                              // If it takes longer than 2s for a rotation, consider it stopped.
-      if (lastMotorInterval < 1000000) {                                       // catches the case of first pulse in a while
-        unsigned long fullRotationMs = lastMotorInterval * CAL_MOTOR_MAGNETS;  // Ideally one motor magnet
-        tempRpm = (float)60000000 / fullRotationMs;                            // 1 minute, divided by time of one rotation at current speed
+  if (CAL_MOTOR_MAGNETS > 0) {  //Only run if number of motor magnets is greater than 0. Protects against a divide by 0 crash.
+    if (CAL_USE_IMPROVED_RPM_CALCULATION) {
+      float tempRpm = 0;
+      // Calculate time taken for last wheel rotation
+      if (micros() - lastMotorPollTime < 1000000) {                              // If it takes longer than 2s for a rotation, consider it stopped.
+        if (lastMotorInterval < 1000000) {                                       // catches the case of first pulse in a while
+          unsigned long fullRotationMs = lastMotorInterval * CAL_MOTOR_MAGNETS;  // Ideally one motor magnet
+          tempRpm = (float)60000000 / fullRotationMs;                            // 1 minute, divided by time of one rotation at current speed
+        }
+      } else {
+        tempRpm = 0;
       }
-    } else {
-      tempRpm = 0;
-    }
 
-    // tempRpm = motorRPM *0.5 + tempRpm *0.5;
-    //
-    // char buff[50];
-    // sprintf(buff, "Motor Interval = %lu", lastMotorInterval);
-    // SerialA.println(buff);
-    // SerialA.print("RPM = ");
-    // SerialA.println(tempRpm);
-    // lastMotorInterval = 0;
-    return (tempRpm);
+      // tempRpm = motorRPM *0.5 + tempRpm *0.5;
+      //
+      // char buff[50];
+      // sprintf(buff, "Motor Interval = %lu", lastMotorInterval);
+      // SerialA.println(buff);
+      // SerialA.print("RPM = ");
+      // SerialA.println(tempRpm);
+      // lastMotorInterval = 0;
+      return (tempRpm);
+    } else {
+      static unsigned long lastMotorSpeedPollTime = 0;
+      // Counts the number of magnet passesdetected since the last Motor rpm check, converts to revolutions per minute and returns that value
+      //  First action is to take copies of the motor poll count and time so that the variables don't change during the calculations.
+      int tempMotorPoll = motorPoll;
+      motorPoll = 0;
+      unsigned long tempLastMotorPollTime = lastMotorSpeedPollTime;
+      unsigned long tempMotorPollTime = millis();
+      lastMotorSpeedPollTime = tempMotorPollTime;
+      // Now calculate the number of revolutions of the motor shaft
+      float motorRevolutions = (float)tempMotorPoll / CAL_MOTOR_MAGNETS;
+      float motorRevolutionsPerMin = motorRevolutions * 60.0;
+      float timeDiffms = tempMotorPollTime - tempLastMotorPollTime;
+      float timeDiffs = timeDiffms / 1000.0;
+      // Now use the time time passed to convert this to revolutions per minute
+      // RMP = (revolutions / latestPollTIme - lastPollTime) / 1000 to convert to Seconds) * 60 to convert to minutes
+      float motorShaftRPM = motorRevolutionsPerMin / timeDiffs;
+      return (motorShaftRPM);
+    }
   } else {
-    static unsigned long lastMotorSpeedPollTime = 0;
-    // Counts the number of magnet passesdetected since the last Motor rpm check, converts to revolutions per minute and returns that value
-    //  First action is to take copies of the motor poll count and time so that the variables don't change during the calculations.
-    int tempMotorPoll = motorPoll;
-    motorPoll = 0;
-    unsigned long tempLastMotorPollTime = lastMotorSpeedPollTime;
-    unsigned long tempMotorPollTime = millis();
-    lastMotorSpeedPollTime = tempMotorPollTime;
-    // Now calculate the number of revolutions of the motor shaft
-    float motorRevolutions = (float)tempMotorPoll / CAL_MOTOR_MAGNETS;
-    float motorRevolutionsPerMin = motorRevolutions * 60.0;
-    float timeDiffms = tempMotorPollTime - tempLastMotorPollTime;
-    float timeDiffs = timeDiffms / 1000.0;
-    // Now use the time time passed to convert this to revolutions per minute
-    // RMP = (revolutions / latestPollTIme - lastPollTime) / 1000 to convert to Seconds) * 60 to convert to minutes
-    float motorShaftRPM = motorRevolutionsPerMin / timeDiffs;
-    return (motorShaftRPM);
+    return (0);  // Num motor magnets is 0
   }
 }
 
@@ -643,16 +652,16 @@ int checkBtAtMode()  // Checks if the HC-05 Bluetooth module is in AT mode. Retu
   SerialA.begin(38400);  // AT mode baud rate
   while (!Serial) {
   }  // Wait for serial to initialise
-  delay(200);
+  delay(400);
   SerialA.print("AT\r\n");  // for some reason when AT is sent the first time, an error is always returned.
-  delay(200);               // wait for response
+  delay(400);               // wait for response
   flushSerial();
   while (SerialA.available())  // to check if the flush worked
   {
     SerialA.println((char)SerialA.read());
   }
   SerialA.println("AT");
-  delay(200);
+  delay(400);
   char tempOne = (char)SerialA.read();
   delay(20);
   char tempTwo = (char)SerialA.read();

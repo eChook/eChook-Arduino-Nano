@@ -11,6 +11,7 @@ If you are updating to the new code please ensure your `Calibration.h` file is b
 
 ## Changelog
 
+- 21/01/24: Major changes, split codebase into multiple files, stored calibration in EEPROM and added a serial configuration interface
 - 10/03/22: Tidied Button reading functions to better utilise the Bounce2 Library
 - 10/03/22: Added compatibility with the Arduino Nano Every board, which is the official replacement for the venerable Arduino Nano 328p
 - 12/02/19: Fixed bug that made speed read at 1/3 of actual (Thanks Apex Racing!)

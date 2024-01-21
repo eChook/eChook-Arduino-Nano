@@ -1,6 +1,6 @@
 // ===============================================
 // eChook Telemetry Board Code
-// Target: ATMega 328, Arduino Nano.
+// Target: ATMega 328, Arduino Nano, Arduino Nano Every.
 //
 // Authors: ROWAN GRIFFIN, IAN COOPER
 // Lisence: MIT

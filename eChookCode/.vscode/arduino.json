@@ -1,7 +1,0 @@
-{
-    "configuration": "cpu=atmega328",
-    "board": "arduino:avr:nano",
-    "port": "COM3",
-    "programmer": "arduinoisp",
-    "sketch": "eChookCode.ino"
-}

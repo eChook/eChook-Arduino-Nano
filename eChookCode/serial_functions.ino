@@ -4,9 +4,9 @@
 void SerialCheck()
 {
 
-    if (Serial.available())
+    if (SerialA.available())
     {
-        char temp = Serial.read();
+        char temp = SerialA.read();
         uint8_t inMenu = 1;
         long menuEnterTime = millis();
         while (inMenu)
@@ -15,11 +15,11 @@ void SerialCheck()
             {
                 // Get / Request Calibration Data (Get/Set)
                 // Action - send calibration data.
-                while (!Serial.available())
+                while (!SerialA.available())
                 {
                     inMenu = menuTimeout(menuEnterTime);
                 }
-                temp = Serial.read();
+                temp = SerialA.read();
                 if (temp == 'f')
                 { // get float cal
                     sendFloatCal();
@@ -41,11 +41,11 @@ void SerialCheck()
             {
                 // Set Calibration data
 
-                while (!Serial.available())
+                while (!SerialA.available())
                 {
                     inMenu = menuTimeout(menuEnterTime);
                 }
-                temp = Serial.read();
+                temp = SerialA.read();
                 if (temp == 'n')
                 { 
                     receiveBTName();
@@ -86,7 +86,7 @@ void sendFloatCal()
         sendArr[i + 2] = getFloatByte(i);
     }
 
-    Serial.write(sendArr, sendArrayLength);
+    SerialA.write(sendArr, sendArrayLength);
 }
 
 void sendBinaryCal()
@@ -102,7 +102,7 @@ void sendBinaryCal()
         sendArr[i + 2] = getBinaryCalByte(CAL_A + i);
     }
 
-    Serial.write(sendArr, sendArrayLength);
+    SerialA.write(sendArr, sendArrayLength);
 }
 
 void sendBTName()
@@ -118,7 +118,7 @@ void sendBTName()
         sendArr[i + 2] = getNameByte(i);
     }
 
-    Serial.write(sendArr, sendArrayLength);
+    SerialA.write(sendArr, sendArrayLength);
 }
 
 void receiveBTName()
@@ -133,9 +133,9 @@ void receiveBTName()
     {
         timeout = menuTimeout(entryTime);
 
-        if (Serial.available())
+        if (SerialA.available())
         {
-            inBuff[receivedCount] = Serial.read();
+            inBuff[receivedCount] = SerialA.read();
             receivedCount++;
         }
     }
@@ -170,11 +170,11 @@ void receiveFloatCal()
     {
         timeout = menuTimeout(entryTime);
 
-        if (Serial.available())
+        if (SerialA.available())
         {
-            inBuff[receivedCount] = Serial.read();
+            inBuff[receivedCount] = SerialA.read();
             receivedCount++;
-            // Serial.print(receivedCount);
+            // SerialA.print(receivedCount);
         }
     }
 
@@ -199,11 +199,11 @@ void receiveBinaryCal()
     {
         timeout = menuTimeout(entryTime);
 
-        if (Serial.available())
+        if (SerialA.available())
         {
-            inBuff[receivedCount] = Serial.read();
+            inBuff[receivedCount] = SerialA.read();
             receivedCount++;
-            // Serial.print(receivedCount);
+            // SerialA.print(receivedCount);
         }
     }
 

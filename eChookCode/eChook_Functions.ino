@@ -209,6 +209,11 @@ void buttonChecks() {  // Checks state of each button, if a press is detected se
 
 // Reference Voltage Update Function
 float updateReferenceVoltage() {
+  #ifdef NANO_EVERY
+  // TODO - implement properly for Arduino Nano Every
+  return CAL_REFERENCE_VOLTAGE;
+  #else
+  // This section of code is exclusive to the ATMEGA328 chip based Arduino Nano Boards.
 
   // This function uses the internal 1v1 reference to back calucalate the 5V rail voltage.
   // It measures the stable reference voltage, using the 5V rail as the ADC reference, then
@@ -230,6 +235,8 @@ float updateReferenceVoltage() {
 
   // Calculate the power rail voltage (reference voltage) relative to the known voltage
   return (float)((CAL_INTERNAL_REFERENCE_VOLTAGE * 1024UL) / ADC);
+  
+  #endif
 }
 
 // Sensor Reading Functions
@@ -745,7 +752,7 @@ void configureBluetooth() {
     delay(200);
     digitalWrite(13, LOW);
     delay(200);
-    // SerialA.println("AT+RESET\r\n"); // has to be in the middle to provide a suitable delay before and after
+    SerialA.println("AT+RESET\r\n"); // has to be in the middle to provide a suitable delay before and after
     digitalWrite(13, HIGH);
     delay(200);
     digitalWrite(13, LOW);

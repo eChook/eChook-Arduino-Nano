@@ -46,7 +46,7 @@
 //  13 - Throttle Low Voltage Threshold
 //  14 - Throttle High Voltage Threshold
 //  15 - Wheel Circumference in Meters
-//  16 - SPARE
+//  16 - Internal Reference voltage
 //  17 - SPARE
 //  18 - SPARE
 //  19 - SPARE
@@ -93,6 +93,7 @@
 #define INDEX_THROTTLE_LOW 13
 #define INDEX_THROTTLE_HIGH 14
 #define INDEX_WHEEL_CIRCUMFERENCE 15
+#define INDEX_INTERNAL_REFERENCE_VOLTAGE 16
 
 // Functions
 
@@ -156,6 +157,7 @@ void saveCurrCalToEeprom()
     setFloatCal(INDEX_THROTTLE_LOW, (float)CAL_THROTTLE_LOW);
     setFloatCal(INDEX_THROTTLE_HIGH, (float)CAL_THROTTLE_HIGH);
     setFloatCal(INDEX_WHEEL_CIRCUMFERENCE, (float)CAL_WHEEL_CIRCUMFERENCE);
+    setFloatCal(INDEX_INTERNAL_REFERENCE_VOLTAGE, (float)CAL_INTERNAL_REFERENCE_VOLTAGE);
 
     writeBTName();
 }
@@ -175,6 +177,7 @@ void loadEepromCalibration()
     CAL_MOTOR_MAGNETS = (int)getFloatCal(INDEX_MOTOR_MAGNETS);
     CAL_WHEEL_CIRCUMFERENCE = getFloatCal(INDEX_WHEEL_CIRCUMFERENCE);
     CAL_REFERENCE_VOLTAGE = getFloatCal(INDEX_REF_VOLTAGE);
+    CAL_INTERNAL_REFERENCE_VOLTAGE = getFloatCal(INDEX_INTERNAL_REFERENCE_VOLTAGE);
     CAL_BATTERY_TOTAL = getFloatCal(INDEX_24_VOLTAGE);
     CAL_BATTERY_LOWER = getFloatCal(INDEX_12_VOLTAGE);
     CAL_CURRENT = getFloatCal(INDEX_CURRENT);
@@ -186,6 +189,12 @@ void loadEepromCalibration()
     CAL_THERM2_C = getFloatCal(INDEX_TEMP_2_C);
     CAL_THROTTLE_LOW = (int)getFloatCal(INDEX_THROTTLE_LOW);
     CAL_THROTTLE_HIGH = (int)getFloatCal(INDEX_THROTTLE_HIGH);
+
+    // Catch function for Int Ref Voltage on firmware upgrade
+    if(CAL_INTERNAL_REFERENCE_VOLTAGE == 0 || CAL_INTERNAL_REFERENCE_VOLTAGE == 0xFF ){
+      CAL_INTERNAL_REFERENCE_VOLTAGE = 1.1;
+      setFloatCal(INDEX_INTERNAL_REFERENCE_VOLTAGE, (float)CAL_INTERNAL_REFERENCE_VOLTAGE);
+    }
 
     getBTName();
 }

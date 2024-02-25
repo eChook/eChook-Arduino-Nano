@@ -497,10 +497,12 @@ float calculateGearRatio() {
 float thermistorADCToCelcius(int rawADC, uint8_t thermNumber) {
   // Steinhart-Hart Coefficients, see comment above
   // These coefficients are for the MF52AT NTC 10k thermistor, however due to thermistor tolerances each thermistor should be calibrated individually.
-  float A = CAL_THERM1_A;
-  float B = CAL_THERM1_B;
-  float C = CAL_THERM1_C;
-  if (thermNumber = 2) {
+  float A,B,C;
+  if(thermNumber == 1){
+  A = CAL_THERM1_A;
+  B = CAL_THERM1_B;
+  C = CAL_THERM1_C;
+  }else {
     A = CAL_THERM2_A;
     B = CAL_THERM2_B;
     C = CAL_THERM2_C;

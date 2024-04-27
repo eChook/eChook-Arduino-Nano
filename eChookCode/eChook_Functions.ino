@@ -343,9 +343,12 @@ float readTempTwo() {
 // Reading the interanl arduino tempreature - notes
 // on the accuracy and calibration here: https://playground.arduino.cc/Main/InternalTemperatureSensor/
 float readTempInternal(void) {
+  #ifdef NANO_EVERY
+  // TODO - implement for Arduino Nano Every
+  return 0;
+  #else
   unsigned int wADC;
   float t;
-
   // The internal temperature has to be used
   // with the internal reference of 1.1V.
   // Channel 8 can not be selected with
@@ -366,6 +369,7 @@ float readTempInternal(void) {
   // eChook Measured offset
   t = t - 7;
   return (t > 0 ? t : 0);
+  #endif
 }
 
 float readWheelSpeed() {

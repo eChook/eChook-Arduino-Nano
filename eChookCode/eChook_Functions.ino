@@ -12,26 +12,25 @@ void eChookSetup() {
   brakeButtonDebounce.interval(50);
 
   /**
-         * Initialise Serial Communication
-         * If communication over bluetooth is not working or the results are garbled it is likely the
-         * baud rate set here (number in brackets after SerialA.begin) and the baud rate of the bluetooth
-         * module aren't set the same.
-         *
-         * A good tutorial for altering the HC-05 Bluetooth Module parameters is here:
-         * http://www.instructables.com/id/Modify-The-HC-05-Bluetooth-Module-Defaults-Using-A/
-         *
-         * The HC-05 modules commonly come preset with baud rates of 9600 or 32000
-         *
-         * Alternatively the following bit of code will attempt to automatically configure a
-         * HC-05 module if it is plugged in in AT (setup) mode then the arduino is reset. (Power Arduino,
-         * unplug HC-05 module, press button on HC-05 module, plug back in holding button [light should blink slowly],
-         * release button, then reset Arduino)
-         */
+   * Initialise Serial Communication
+   * If communication over bluetooth is not working or the results are garbled it is likely the
+   * baud rate set here (number in brackets after SerialA.begin) and the baud rate of the bluetooth
+   * module aren't set the same.
+   *
+   * A good tutorial for altering the HC-05 Bluetooth Module parameters is here:
+   * http://www.instructables.com/id/Modify-The-HC-05-Bluetooth-Module-Defaults-Using-A/
+   *
+   * The HC-05 modules commonly come preset with baud rates of 9600 or 32000
+   *
+   * Alternatively the following bit of code will attempt to automatically configure a
+   * HC-05 module if it is plugged in in AT (setup) mode then the arduino is reset. (Power Arduino,
+   * unplug HC-05 module, press button on HC-05 module, plug back in holding button [light should blink slowly],
+   * release button, then reset Arduino)
+   */
 
-  if (checkBtAtMode())  // checks if the arduino is in AT mode
-  {
-    configureBluetooth();  // If AT mode is set, configure according to the BT_xxx constants defined above
-  }
+
+  configureBluetooth();  // Checks if If AT mode is set and configures HC-05 according to the BT_xxx constants defined above
+
 
   SerialA.begin(CAL_BT_BAUDRATE);  // Bluetooth and USB communications
 
@@ -43,6 +42,12 @@ void eChookSetup() {
 }
 
 void pinSetup() {
+
+#ifdef JUMPER_I2C
+  TEMP1_IN_PIN = A1;
+  TEMP2_IN_PIN = A6;
+#endif
+
   // Set up pin modes for all inputs and outputs
   pinMode(MOTOR_OUT_PIN, OUTPUT);
   digitalWrite(MOTOR_OUT_PIN, LOW);  // Ensure motor is not driven on startup
@@ -58,13 +63,19 @@ void pinSetup() {
   pinMode(CYCLE_BTN_IN_PIN, INPUT_PULLUP);
   pinMode(BRAKE_IN_PIN, INPUT_PULLUP);  // input type will depend on implementation of brake light
 
+#ifdef JUMPER_BT_EN
+  pinMode(BT_EN_PIN, OUTPUT);
+  digitalWrite(BT_EN_PIN, HIGH);
+#endif
+
+
   /**
-         * Set up Interrupts:
-         * When the specified digital change is seen on a the interrupt pin it will pause the main loop and
-         * run the code in the Interrupt Service Routine (ISR) before resuming the main code.
-         * The interrupt number is not the pin number on the arduino Nano. For explanation see here:
-         * https://www.arduino.cc/en/Reference/AttachInterrupt
-         */
+   * Set up Interrupts:
+   * When the specified digital change is seen on a the interrupt pin it will pause the main loop and
+   * run the code in the Interrupt Service Routine (ISR) before resuming the main code.
+   * The interrupt number is not the pin number on the arduino Nano. For explanation see here:
+   * https://www.arduino.cc/en/Reference/AttachInterrupt
+   */
 
 #ifdef NANO_EVERY
   attachInterrupt(2, motorSpeedISR, RISING);
@@ -209,10 +220,10 @@ void buttonChecks() {  // Checks state of each button, if a press is detected se
 
 // Reference Voltage Update Function
 float updateReferenceVoltage() {
-  #ifdef NANO_EVERY
+#ifdef NANO_EVERY
   // TODO - implement properly for Arduino Nano Every
   return CAL_REFERENCE_VOLTAGE;
-  #else
+#else
   // This section of code is exclusive to the ATMEGA328 chip based Arduino Nano Boards.
 
   // This function uses the internal 1v1 reference to back calucalate the 5V rail voltage.
@@ -235,8 +246,8 @@ float updateReferenceVoltage() {
 
   // Calculate the power rail voltage (reference voltage) relative to the known voltage
   return (float)((CAL_INTERNAL_REFERENCE_VOLTAGE * 1024UL) / ADC);
-  
-  #endif
+
+#endif
 }
 
 // Sensor Reading Functions
@@ -343,10 +354,10 @@ float readTempTwo() {
 // Reading the interanl arduino tempreature - notes
 // on the accuracy and calibration here: https://playground.arduino.cc/Main/InternalTemperatureSensor/
 float readTempInternal(void) {
-  #ifdef NANO_EVERY
+#ifdef NANO_EVERY
   // TODO - implement for Arduino Nano Every
   return 0;
-  #else
+#else
   unsigned int wADC;
   float t;
   // The internal temperature has to be used
@@ -363,17 +374,17 @@ float readTempInternal(void) {
     ;
   // Reading register "ADCW" takes care of how to read ADCL and ADCH.
   wADC = ADCW;
-  // The offset of 324.31 could be wrong. It is just an indication.
+  // The offset is specific to each device. This is a general figure
   t = (wADC - 324.31) / 1.22;
   // The returned temperature is in degrees Celsius.
-  // eChook Measured offset
+  // Measured offset
   t = t - 7;
   return (t > 0 ? t : 0);
-  #endif
+#endif
 }
 
 float readWheelSpeed() {
-  if (CAL_WHEEL_MAGNETS > 0) {  //Only run if number of wheel magnets is greater than 0. Protects against a divide by 0 crash.
+  if (CAL_WHEEL_MAGNETS > 0) {  // Only run if number of wheel magnets is greater than 0. Protects against a divide by 0 crash.
     float wheelSpeedMetersPerSecond = 0;
 
     if (CAL_USE_IMPROVED_SPEED_CALCULATION) {  // Two ways to calculate wheel RPM
@@ -413,7 +424,6 @@ float readWheelSpeed() {
       wheelSpeedMetersPerSecond = wheelDistanceTravelled / ((float)(tempWheelPollTime - tempLastWheelPollTime) / (float)1000.0);  // the /1000 converts the milliseconds to seconds
     }
 
-
     // Next section of code handles the smooting:
     speedSmoothingArray[speedSmoothingCount] = wheelSpeedMetersPerSecond;  // adds current speed into oldest position in array
     speedSmoothingCount++;                                                 // incrememnts array position for next reading
@@ -434,7 +444,7 @@ float readWheelSpeed() {
 }
 
 float readMotorRPM() {
-  if (CAL_MOTOR_MAGNETS > 0) {  //Only run if number of motor magnets is greater than 0. Protects against a divide by 0 crash.
+  if (CAL_MOTOR_MAGNETS > 0) {  // Only run if number of motor magnets is greater than 0. Protects against a divide by 0 crash.
     if (CAL_USE_IMPROVED_RPM_CALCULATION) {
       float tempRpm = 0;
       // Calculate time taken for last wheel rotation
@@ -501,12 +511,12 @@ float calculateGearRatio() {
 float thermistorADCToCelcius(int rawADC, uint8_t thermNumber) {
   // Steinhart-Hart Coefficients, see comment above
   // These coefficients are for the MF52AT NTC 10k thermistor, however due to thermistor tolerances each thermistor should be calibrated individually.
-  float A,B,C;
-  if(thermNumber == 1){
-  A = CAL_THERM1_A;
-  B = CAL_THERM1_B;
-  C = CAL_THERM1_C;
-  }else {
+  float A, B, C;
+  if (thermNumber == 1) {
+    A = CAL_THERM1_A;
+    B = CAL_THERM1_B;
+    C = CAL_THERM1_C;
+  } else {
     A = CAL_THERM2_A;
     B = CAL_THERM2_B;
     C = CAL_THERM2_C;
@@ -665,7 +675,13 @@ int checkBtAtMode()  // Checks if the HC-05 Bluetooth module is in AT mode. Retu
   SerialA.begin(38400);  // AT mode baud rate
   while (!Serial) {
   }  // Wait for serial to initialise
+
+#ifdef JUMPER_BT_EN
+  digitalWrite(BT_EN_PIN, LOW);
+#endif
+
   delay(400);
+
   SerialA.print("AT\r\n");  // for some reason when AT is sent the first time, an error is always returned.
   delay(400);               // wait for response
   flushSerial();
@@ -698,8 +714,49 @@ int checkBtAtMode()  // Checks if the HC-05 Bluetooth module is in AT mode. Retu
 }
 
 void configureBluetooth() {
-  // Assumes AT mode has been confirmed.
-  SerialA.begin(38400);
+
+  SerialA.begin(38400);  // AT mode baud rate
+  while (!Serial) {
+  }  // Wait for serial to initialise
+
+#ifdef JUMPER_BT_EN
+  digitalWrite(BT_EN_PIN, LOW);
+#endif
+
+  delay(400);
+
+  SerialA.print("AT\r\n");  // for some reason when AT is sent the first time, an error is always returned.
+  delay(400);               // wait for response
+  flushSerial();
+  while (SerialA.available())  // to check if the flush worked
+  {
+    SerialA.println((char)SerialA.read());
+  }
+  SerialA.println("AT");
+  delay(400);
+  char tempOne = (char)SerialA.read();
+  delay(20);
+  char tempTwo = (char)SerialA.read();
+  if (tempOne == 'O' && tempTwo == 'K')  // Was the response "OK"?
+  {
+    //    SerialA.println("AT Mode Confirmed");
+    digitalWrite(13, HIGH);
+  } else {
+    //    SerialA.println("AT Mode NOT Confirmed");
+    //    SerialA.print("Char 1 = ");
+    //    SerialA.print(tempOne);
+    //    SerialA.print("Char 2 = ");
+    //    SerialA.println(tempTwo);
+
+#ifdef JUMPER_BT_EN
+    digitalWrite(BT_EN_PIN, HIGH);
+#endif
+    SerialA.begin(CAL_BT_BAUDRATE);  // reset baud rate
+    while (!Serial) {
+    }  // wait while serial is inialising
+    return;
+  }
+
   uint8_t btNameSet = 0;  // These will be set to 1 when each is successfully updated
   uint8_t btBaudSet = 0;
   // Set Bluetooth Name
@@ -709,9 +766,9 @@ void configureBluetooth() {
   SerialA.print("\r\n");
   // Now Check Response
   waitForSerial(500);
-  char tempOne = (char)SerialA.read();
+  tempOne = (char)SerialA.read();
   waitForSerial(500);
-  char tempTwo = (char)SerialA.read();
+  tempTwo = (char)SerialA.read();
   if (tempOne == 'O' && tempTwo == 'K')  // Was the response "OK"?
   {
     // SerialA.println("Name Set");
@@ -758,7 +815,7 @@ void configureBluetooth() {
     delay(200);
     digitalWrite(13, LOW);
     delay(200);
-    SerialA.println("AT+RESET\r\n"); // has to be in the middle to provide a suitable delay before and after
+    SerialA.println("AT+RESET\r\n");  // has to be in the middle to provide a suitable delay before and after
     digitalWrite(13, HIGH);
     delay(200);
     digitalWrite(13, LOW);
@@ -778,7 +835,13 @@ void configureBluetooth() {
       flashCount++;
     }
   }
-  SerialA.begin(CAL_BT_BAUDRATE);
+#ifdef JUMPER_BT_EN
+  digitalWrite(BT_EN_PIN, HIGH);
+#endif
+  SerialA.begin(CAL_BT_BAUDRATE);  // reset baud rate
+  while (!Serial) {
+  }  // wait while serial is inialising
+  return;
 }
 
 void flushSerial() {  // SerialA.flush() flushes the write buffer, this function manually flushes the read buffer.

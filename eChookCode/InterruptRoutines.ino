@@ -13,7 +13,7 @@ void motorSpeedISR()
                         lastMotorPollTime = micros();
                 }
         }else {
-                motorPoll++;
+                motorPoll++;                
         }
 }
 

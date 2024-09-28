@@ -98,7 +98,7 @@ void eChookRoutinesUpdate() {
 
   static unsigned long nextThrottleReadMs = millis();
   if (millis() > nextThrottleReadMs) {    // millis() gives milliseconds since power on. If this is greater than the nextThrottleReadMs we've calculated it will run.
-    nextThrottleReadMs = millis() + 100;  // 100 ms, 10hz
+    nextThrottleReadMs += 100;            // 100 ms, 10hz
     throttle = readThrottle();            // if this is being used as the input to a motor controller it is recommended to check it at a higher frequency than 4Hz
   }
 
@@ -285,13 +285,13 @@ float readCurrent() {  // Reads in ACC input from the differential amplifier, co
   return (tempCurrent);                                 // return the final smoothed value
 }
 
-int readThrottle() {
-  int currThrtlOut = throttle;
+float readThrottle() {
+  static int currThrtlOut = 0;
   float tempThrottle = analogRead(THROTTLE_IN_PIN);
 
   if (CAL_THROTTLE_VARIABLE)  // Analogue throttle, not push button
   {
-    tempThrottle = (tempThrottle / 1023) * referenceVoltage;  // Gives the actual voltage seen on the arduino Pin, assuming reference voltage of 5V
+    tempThrottle = (tempThrottle / 1023) * referenceVoltage;  // Gives the actual voltage seen on the arduino Pin
     throttleIn = tempThrottle;                                // Update Global variable for throttle in voltage
     // SerialA.print(tempThrottle);
     // SerialA.print(", ");
@@ -315,30 +315,32 @@ int readThrottle() {
     }
   }
 
-  // tempThrottle = map(tempThrottle, 0, 255, 0, 100);  // Convert to a percentage for ease of calculation
-
   if (CAL_THROTTLE_RAMP) {
-    // This code generates a simple ramp up in throttle. The >100 is there as it will likely take about 30% throttle to get the car moving, so this will give a quicker start.
+    // This code generates a simple ramp up in throttle. The >100 is there as it will likely take about 40% throttle to get the car moving, so this will give a quicker start.
     if (tempThrottle >= currThrtlOut && tempThrottle > 100) {  // This could be if(thrtlIn > thrtlOut && speed < threshold) to make it low speed only. Speed and threshold are undefined in this example!
       if (currThrtlOut < 100) {
-        currThrtlOut = 100;
+        currThrtlOut = 101;
       }
-      currThrtlOut += 4;                  // Value dictates ramp speed. Calculated by (155/x)/10. 4 gives (155/4)/10=3.875 seconds, 2 gives 7.75 seconds, 1 gives 15.5 seconds
+      currThrtlOut  = currThrtlOut + 4;                  // Value dictates ramp speed. Calculated by (155/x)/10. 4 gives (155/4)/10=3.875 seconds, 2 gives 7.75 seconds, 1 gives 15.5 seconds
       if (currThrtlOut > tempThrottle) {  // Fixes the throttle jitter if the increment puts output over request.
         currThrtlOut = tempThrottle;
       }
     } else {
       currThrtlOut = tempThrottle;
     }
+    
   } else {
     currThrtlOut = tempThrottle;
   }
+
+  
   if (CAL_THROTTLE_OUTPUT_EN) {
     analogWrite(MOTOR_OUT_PIN, currThrtlOut);  // This drives the motor output. Unless you are using the board to drive your motor you can comment it out.
   } else {
     analogWrite(MOTOR_OUT_PIN, 0);
   }
-  return (map(currThrtlOut, 0, 255, 0, 100));
+
+  return (float)currThrtlOut/2.55; // Convert to a float percentage for the output
 }
 
 float readTempOne() {

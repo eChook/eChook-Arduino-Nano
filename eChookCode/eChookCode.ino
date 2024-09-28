@@ -31,12 +31,12 @@ HardwareSerial &SerialA = Serial;
 // ---------------------------------------
 // Cutting the left hand link and bridging the centre pad to the right pad on JP1 *AND* JP2 reroutes the temperature sensors
 // to Arduino pins A1 and A6, freeing up pins A4 and A5 to be used as I2C SDA(A4) and SCL(A5) on the expansion header.
-#define JUMPER_I2C
+// #define JUMPER_I2C
 // Bridging JP3 enables automatic HC-05 programming using pin D4. Leaving it unbridged allows use of D4 on the expansion header.
 #define JUMPER_BT_EN
 // ---------------------------------------
 
-int DEBUG_MODE = 0; // If debug mode is on, no data will be sent via bluetooth. This is to make any debug messages easier to see.
+int DEBUG_MODE = 0; // If debug mode is on, no data will be sent via bluetooth. This is to make any debug messages easier to see. The online configuratin editor WONT work if debug mode is on.
 
 // Initialise button debounces
 Bounce launchButtonDebounce = Bounce();

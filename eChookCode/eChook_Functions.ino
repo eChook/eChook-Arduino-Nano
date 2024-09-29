@@ -99,7 +99,7 @@ void eChookRoutinesUpdate() {
   static unsigned long nextThrottleReadMs = millis();
   if (millis() > nextThrottleReadMs) {    // millis() gives milliseconds since power on. If this is greater than the nextThrottleReadMs we've calculated it will run.
     nextThrottleReadMs += 100;            // 100 ms, 10hz
-    throttle = readThrottle();            // if this is being used as the input to a motor controller it is recommended to check it at a higher frequency than 4Hz
+    throttleOutput = readThrottle();            // if this is being used as the input to a motor controller it is recommended to check it at a higher frequency than 4Hz
   }
 
   static unsigned long lastShortDataSendTime = millis();              // this is reset at the start so that the calculation time does not add to the loop time
@@ -118,8 +118,9 @@ void eChookRoutinesUpdate() {
     current = readCurrent();
     sendData(CURRENT_ID, current);
 
+    sendData(THROTTLE_VOLTAGE_ID, throttleV);
     sendData(THROTTLE_INPUT_ID, throttleIn);
-    sendData(THROTTLE_ACTUAL_ID, throttle);
+    sendData(THROTTLE_OUTPUT_ID, throttleOutput);
 
     if (CAL_USE_IMPROVED_RPM_CALCULATION) {
       motorRPM = readMotorRPM();
@@ -289,13 +290,13 @@ float readThrottle() {
   static int currThrtlOut = 0;
   float tempThrottle = analogRead(THROTTLE_IN_PIN);
 
-  if (CAL_THROTTLE_VARIABLE)  // Analogue throttle, not push button
+  if (CAL_THROTTLE_VARIABLE)  // Analogue throttleOutput, not push button
   {
     tempThrottle = (tempThrottle / 1023) * referenceVoltage;  // Gives the actual voltage seen on the arduino Pin
-    throttleIn = tempThrottle;                                // Update Global variable for throttle in voltage
+    throttleV = tempThrottle;                                // Update Global variable for throttleOutput in voltage
     // SerialA.print(tempThrottle);
     // SerialA.print(", ");
-    // The following code adds dead bands to the start and end of the throttle travel
+    // The following code adds dead bands to the start and end of the throttleOutput travel
     if (tempThrottle < CAL_THROTTLE_LOW)  // less than 1V
     {
       tempThrottle = CAL_THROTTLE_LOW;
@@ -306,23 +307,25 @@ float readThrottle() {
 
     tempThrottle = ((tempThrottle - CAL_THROTTLE_LOW) / (float)(CAL_THROTTLE_HIGH - CAL_THROTTLE_LOW)) * (255);
   } else {
-    throttleIn = (tempThrottle / 1023) * referenceVoltage;  // Update Global variable for throttle in voltage
+    throttleV = (tempThrottle / 1023) * referenceVoltage;  // Update Global variable for throttleOutput in voltage
     if (tempThrottle > 200)                                 // Approx 1v
     {
-      tempThrottle = 255;  // full throttle
+      tempThrottle = 255;  // full throttleOutput
     } else {
-      tempThrottle = 0;  // No throttle
+      tempThrottle = 0;  // No throttleOutput
     }
   }
 
+  throttleIn = (float)tempThrottle/2.55; // Convert to a float percentage for the output
+
   if (CAL_THROTTLE_RAMP) {
-    // This code generates a simple ramp up in throttle. The >100 is there as it will likely take about 40% throttle to get the car moving, so this will give a quicker start.
+    // This code generates a simple ramp up in throttleOutput. The >100 is there as it will likely take about 40% throttleOutput to get the car moving, so this will give a quicker start.
     if (tempThrottle >= currThrtlOut && tempThrottle > 100) {  // This could be if(thrtlIn > thrtlOut && speed < threshold) to make it low speed only. Speed and threshold are undefined in this example!
       if (currThrtlOut < 100) {
         currThrtlOut = 101;
       }
       currThrtlOut  = currThrtlOut + 4;                  // Value dictates ramp speed. Calculated by (155/x)/10. 4 gives (155/4)/10=3.875 seconds, 2 gives 7.75 seconds, 1 gives 15.5 seconds
-      if (currThrtlOut > tempThrottle) {  // Fixes the throttle jitter if the increment puts output over request.
+      if (currThrtlOut > tempThrottle) {  // Fixes the throttleOutput jitter if the increment puts output over request.
         currThrtlOut = tempThrottle;
       }
     } else {
@@ -564,14 +567,6 @@ void sendData(char identifier, float value) {
   {
     byte dataByte1;
     byte dataByte2;
-    // if (value == 0)
-    // {
-    //         // It is impossible to send null bytes over Serial connection
-    //         // so instead we define zero as 0xFF or 11111111 i.e. 255
-    //         dataByte1 = 0xFF;
-    //         dataByte2 = 0xFF;
-    // }
-    // else
     if (value <= 127) {
       // Values under 128 are sent as a float
       // i.e. value = dataByte1 + dataByte2 / 100
@@ -583,14 +578,6 @@ void sendData(char identifier, float value) {
       decimal = (int)tempDecimal;
       dataByte1 = (byte)integer;
       dataByte2 = (byte)decimal;
-      // if (decimal == 0)
-      // {
-      //         dataByte2 = 0xFF;
-      // }
-      // if (integer == 0)
-      // {
-      //         dataByte1 = 0xFF;
-      // }
     } else {
       // Values above 127 are sent as integer
       // i.e. value = dataByte1 * 100 + dataByte2
@@ -602,14 +589,6 @@ void sendData(char identifier, float value) {
       // dataByte1 = dataByte1 || 0x10000000; //flag for integer send value
       dataByte1 += 128;
       dataByte2 = (byte)tens;
-      // if (tens == 0)
-      // {
-      //         dataByte2 = 0xFF;
-      // }
-      // if (hundreds == 0)
-      // {
-      //         dataByte1 = 0xFF;
-      // }
     }
     // Send the data in the format { [id] [1] [2] }
     SerialA.write(123);
@@ -618,10 +597,10 @@ void sendData(char identifier, float value) {
     SerialA.write(dataByte2);
     SerialA.write(125);
   } else {
-    // SerialA.print("Data Out: \t");
-    // SerialA.print(identifier);
-    // SerialA.print(",\t");
-    // SerialA.println(value);
+    SerialA.print("Data Out: \t");
+    SerialA.print(identifier);
+    SerialA.print(",\t");
+    SerialA.println(value);
   }
 }
 
@@ -630,12 +609,6 @@ void sendData(char identifier, int value) {
   if (!DEBUG_MODE) {
     byte dataByte1;
     byte dataByte2;
-    // if (value == 0)
-    // {
-    //         dataByte1 = 0xFF;
-    //         dataByte2 = 0xFF;
-    // }
-    // else if (value <= 127)
     if (value <= 127) {
       dataByte1 = (byte)value;
       dataByte2 = 0;  // we know there's no decimal component as an int was passed in
@@ -647,14 +620,6 @@ void sendData(char identifier, int value) {
       dataByte1 = (byte)hundreds;
       dataByte1 += 128;  // sets MSB High to indicate Integer value
       dataByte2 = (byte)tens;
-      // if (tens == 0)
-      // {
-      //         dataByte2 = 0xFF;
-      // }
-      // if (hundreds == 0)
-      // {
-      //         dataByte1 = 0xFF;
-      // }
     }
     SerialA.write(123);
     SerialA.write(identifier);
@@ -663,10 +628,10 @@ void sendData(char identifier, int value) {
     SerialA.write(125);
   } else {
 
-    // SerialA.print("Data Out: \t");
-    // SerialA.print(identifier);
-    // SerialA.print(",\t");
-    // SerialA.println(value);
+    SerialA.print("Data Out: \t");
+    SerialA.print(identifier);
+    SerialA.print(",\t");
+    SerialA.println(value);
   }
 }
 

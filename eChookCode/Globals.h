@@ -1,30 +1,32 @@
 // Bluetooth Data Identifiers
 // If these are altered the data will no longer be interpreted correctly by the phone.
-const char SPEED_ID            = 's';
-const char MOTOR_ID            = 'm';
-const char CURRENT_ID          = 'i';
-const char VOLTAGE_ID          = 'v';
-const char VOLTAGE_LOWER_ID    = 'w';
-const char THROTTLE_INPUT_ID   = 't';
-const char THROTTLE_ACTUAL_ID  = 'd';
-const char TEMP1_ID            = 'a';
-const char TEMP2_ID            = 'b';
-const char TEMP3_ID            = 'c';
-const char LAUNCH_MODE_ID      = 'L';
-const char CYCLE_VIEW_ID       = 'C';
-const char GEAR_RATIO_ID       = 'r';
-const char BRAKE_PRESSED_ID    = 'B';
-const char REF_VOLTAGE_ID      = 'V';
+const char SPEED_ID            = 's'; // Speed in m/s
+const char MOTOR_ID            = 'm'; // Motor RPM
+const char CURRENT_ID          = 'i'; // Current in Amps
+const char VOLTAGE_ID          = 'v'; // Total Battery Voltage in V
+const char VOLTAGE_LOWER_ID    = 'w'; // Lower Vattery Voltage in V
+const char THROTTLE_INPUT_ID   = 't'; // Throttle Input percentage
+const char THROTTLE_OUTPUT_ID  = 'd'; // Throttle Output Percentage
+const char THROTTLE_VOLTAGE_ID = 'T'; // Throttle input voltage
+const char TEMP1_ID            = 'a'; // Temp 1 in *C
+const char TEMP2_ID            = 'b'; // Temp 2 in *C
+const char TEMP3_ID            = 'c'; // Internal Temp in *C
+const char LAUNCH_MODE_ID      = 'L'; // Launch Mode (Start) button
+const char CYCLE_VIEW_ID       = 'C'; // Cycle View (Scrn) Button
+const char GEAR_RATIO_ID       = 'r'; // Calculated Gear Ratio
+const char BRAKE_PRESSED_ID    = 'B'; // Brake on/off
+const char REF_VOLTAGE_ID      = 'V'; // ADC Reference Voltage
 
 //Measured Reference Voltage:
 float referenceVoltage = 0;
 
 
 // Read in values:
-float batteryVoltageTotal   = 0;
-float batteryVoltageLower   = 0;
-float throttle              = 0;
-float throttleIn            = 0;
+float batteryVoltageTotal   = 0; // Total battery voltage in Volts
+float batteryVoltageLower   = 0; // Lower battery voltage in Volts
+float throttleOutput        = 0; // Throttle output in Percentage
+float throttleIn            = 0; // Throttle input in Percentage
+float throttleV             = 0; // Throttle ADC input voltage
 float current               = 0;
 float motorRPM              = 0;
 float wheelRPM              = 0;

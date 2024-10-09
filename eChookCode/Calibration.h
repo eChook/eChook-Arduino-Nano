@@ -12,12 +12,14 @@
  *
  */
 
-//If you intend to use the online configuration/calibration too, set this to 1, to use these hard coded settings, set it to 0
+//If you intend to use the online configuration/calibration tool, set this to 0, to use these hard coded settings, set it to 1
 uint8_t FORCE_USE_HARDCODED_CAL = 0;
+
 uint8_t CAL_USE_EEPROM = 1;
 
 //Bluetooth Settings
 String CAL_BT_NAME     = "eChook"; // Whatever you want to name your car's bluetooth
+String CAL_BT_PASSWORD = "1234";
 long CAL_BT_BAUDRATE         = 115200;            // Baud Rate to run at. Must match Arduino's baud rate.
 
 // Data Read and Transmit Interval:

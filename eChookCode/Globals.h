@@ -40,6 +40,9 @@ uint8_t brake               = 0;
 // Loop counter used for longer interval functions
 
 
+// Flag to indicate web configuration page is being used:
+uint8_t inConfig = 0;
+
 // Interrupt Variables.
 volatile unsigned long motorPoll      = 0;
 volatile unsigned long wheelPoll      = 0;

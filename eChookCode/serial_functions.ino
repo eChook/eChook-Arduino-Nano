@@ -1,20 +1,22 @@
 // This file handles all serial transactions that aren't simple 'send data' transactions.
 // Primarily this is for the new calibration website.
 
+
 void SerialCheck() {
 
-  if (SerialA.available()) {
-    char temp = SerialA.read();
+  if (Serial.available()) {
+    char temp = Serial.read();
     uint8_t inMenu = 1;
     long menuEnterTime = millis();
     while (inMenu) {
       if (temp == 'g') {
+        inConfig = 1; // This triggers the nano every to start sending data out over USB Serial.
         // Get / Request Calibration Data (Get/Set)
         // Action - send calibration data.
-        while (!SerialA.available()) {
+        while (!Serial.available()) {
           inMenu = menuTimeout(menuEnterTime);
         }
-        temp = SerialA.read();
+        temp = Serial.read();
         if (temp == 'f') {  // get float cal
           sendFloatCal();
         } else if (temp == 'b') {  // get binary cal
@@ -23,16 +25,16 @@ void SerialCheck() {
           sendBTName();
         } else if (temp == 'v') {  // get code version
           sendVersion();
-        } else if (temp == 'd') {  // get version info
+        } else if (temp == 'd') {  // toggle Debug Mode
           DEBUG_MODE = !DEBUG_MODE;
         }
       } else if (temp == 's') {
         // Set Calibration data
 
-        while (!SerialA.available()) {
+        while (!Serial.available()) {
           inMenu = menuTimeout(menuEnterTime);
         }
-        temp = SerialA.read();
+        temp = Serial.read();
         if (temp == 'n') {
           receiveBTName();
         } else if (temp == 'f') {
@@ -52,7 +54,7 @@ void SerialCheck() {
 }
 
 uint8_t menuTimeout(long time) {
-  return millis() - time > 500;  // 5sec timeout
+  return millis() - time > 1000;  // 1sec timeout
 }
 
 // ToDo - add a checksum to calibration transmissions
@@ -68,7 +70,8 @@ void sendFloatCal() {
     sendArr[i + 2] = getFloatByte(i);
   }
 
-  SerialA.write(sendArr, sendArrayLength);
+  Serial.write(sendArr, sendArrayLength);
+  Serial.flush();
 }
 
 void sendBinaryCal() {
@@ -82,7 +85,8 @@ void sendBinaryCal() {
     sendArr[i + 2] = getBinaryCalByte(CAL_A + i);
   }
 
-  SerialA.write(sendArr, sendArrayLength);
+  Serial.write(sendArr, sendArrayLength);
+  Serial.flush();
 }
 
 void sendBTName() {
@@ -96,7 +100,8 @@ void sendBTName() {
     sendArr[i + 2] = getNameByte(i);
   }
 
-  SerialA.write(sendArr, sendArrayLength);
+  Serial.write(sendArr, sendArrayLength);
+  Serial.flush();
 }
 
 void sendVersion() {
@@ -117,7 +122,8 @@ void sendVersion() {
   sendArr[0] = '[';                    // Packet Start Indicator
   sendArr[1] = 'v';                    // Version Array Identifier
   sendArr[sendArrayLength - 1] = ']';  // Packet End Indicator
-  SerialA.write(sendArr, sendArrayLength);
+  Serial.write(sendArr, sendArrayLength);
+  Serial.flush();
 }
 
 void receiveBTName() {
@@ -131,8 +137,8 @@ void receiveBTName() {
   {
     timeout = menuTimeout(entryTime);
 
-    if (SerialA.available()) {
-      inBuff[receivedCount] = SerialA.read();
+    if (Serial.available()) {
+      inBuff[receivedCount] = Serial.read();
       receivedCount++;
     }
   }
@@ -144,6 +150,7 @@ void receiveBTName() {
         temp += inBuff[i];
       }
     }
+    temp.trim();
     CAL_BT_NAME = temp;
 
     writeBTName();            // Writes the new name to EEPROM
@@ -163,10 +170,10 @@ void receiveFloatCal() {
   {
     timeout = menuTimeout(entryTime);
 
-    if (SerialA.available()) {
-      inBuff[receivedCount] = SerialA.read();
+    if (Serial.available()) {
+      inBuff[receivedCount] = Serial.read();
       receivedCount++;
-      // SerialA.print(receivedCount);
+      // Serial.print(receivedCount);
     }
   }
 
@@ -189,10 +196,10 @@ void receiveBinaryCal() {
   {
     timeout = menuTimeout(entryTime);
 
-    if (SerialA.available()) {
-      inBuff[receivedCount] = SerialA.read();
+    if (Serial.available()) {
+      inBuff[receivedCount] = Serial.read();
       receivedCount++;
-      // SerialA.print(receivedCount);
+      // Serial.print(receivedCount);
     }
   }
 

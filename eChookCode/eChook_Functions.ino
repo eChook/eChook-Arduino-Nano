@@ -522,6 +522,11 @@ float calculateGearRatio() {
 // http://www.thinksrs.com/downloads/programs/Therm%20Calc/NTCCalibrator/NTCcalculator.htm
 
 float thermistorADCToCelcius(int rawADC, uint8_t thermNumber) {
+
+  // If no sensor is plugged in, rawADC reading will be close to 1023, so return 0.
+  if(rawADC > 1000)
+      return(0); 
+
   // Steinhart-Hart Coefficients, see comment above
   // These coefficients are for the MF52AT NTC 10k thermistor, however due to thermistor tolerances each thermistor should be calibrated individually.
   float A, B, C;
@@ -599,6 +604,15 @@ void sendData(char identifier, float value) {
       dataByte2 = (byte)tens;
     }
     // Send the data in the format { [id] [1] [2] }
+#ifdef NANO_EVERY
+  if(inConfig){
+    Serial.write(123);
+    Serial.write(identifier);
+    Serial.write(dataByte1);
+    Serial.write(dataByte2);
+    Serial.write(125);
+  }
+#endif
     SerialA.write(123);
     SerialA.write(identifier);
     SerialA.write(dataByte1);
@@ -629,6 +643,15 @@ void sendData(char identifier, int value) {
       dataByte1 += 128;  // sets MSB High to indicate Integer value
       dataByte2 = (byte)tens;
     }
+#ifdef NANO_EVERY
+  if(inConfig){
+    Serial.write(123);
+    Serial.write(identifier);
+    Serial.write(dataByte1);
+    Serial.write(dataByte2);
+    Serial.write(125);
+  }
+#endif
     SerialA.write(123);
     SerialA.write(identifier);
     SerialA.write(dataByte1);
@@ -636,10 +659,10 @@ void sendData(char identifier, int value) {
     SerialA.write(125);
   } else {
 
-    SerialA.print("Data Out: \t");
-    SerialA.print(identifier);
-    SerialA.print(",\t");
-    SerialA.println(value);
+    Serial.print("Data Out: \t");
+    Serial.print(identifier);
+    Serial.print(",\t");
+    Serial.println(value);
   }
 }
 
@@ -704,20 +727,18 @@ void configureBluetooth() {
 // #endif
 
 uint8_t atMode = 0;
-uint8_t attempt = 0;
 
-while (!atMode && attempt < 2){
 
 #ifdef JUMPER_BT_EN
   // PCBV2 - Automatically set BT AT Mode by setting EN pin HIGH
-  digitalWrite(BT_EN_PIN, LOW);
-  delay(100);
+  // digitalWrite(BT_EN_PIN, LOW);
+  // delay(100);
   digitalWrite(BT_EN_PIN, HIGH);
   // Serial.println("EN SET HIGH");
   // delay(300);
 #endif
 
-  delay(200);
+  // delay(100);
   flushSerial();
   SerialA.print("AT\r\n");  
   SerialA.flush(); // Waits for transmission to end
@@ -735,10 +756,7 @@ while (!atMode && attempt < 2){
     Serial.print("Error - ");
     Serial.println(response);  
 #endif
-    attempt++;
   }
-  
-}
 
 if(!atMode){ // Entering AT mode failed
   Serial.println("HC-05 Configuration Failed");
@@ -763,7 +781,7 @@ if(!atMode){ // Entering AT mode failed
   // Now Check Response
   waitForSerial(500);
   delay(50);
-  String response = (SerialA.readStringUntil('\n'));
+  response = (SerialA.readStringUntil('\n'));
   response.trim();
   if (response == "OK"){
 #ifdef NANO_EVERY
@@ -774,7 +792,7 @@ if(!atMode){ // Entering AT mode failed
 
 
   // Set Baud Rate_____________________________________________
-  delay(100);
+  // delay(100);
   flushSerial();
   SerialA.print("AT+UART=");  // command to change BAUD rate
   SerialA.print(CAL_BT_BAUDRATE);

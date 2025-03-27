@@ -8,7 +8,7 @@
 // Documentation: docs.eChook.uk
 // ===============================================
 
-const float CODE_VERSION = 2.02;
+const float CODE_VERSION = 2.03;
 
 // Includes
 #include <math.h>

@@ -31,8 +31,11 @@ void eChookSetup() {
 
 
 #ifdef NANO_EVERY
-  // Starts USB Serial as well on Arduino Nano Every
+  // Starts USB Serial as well on Arduino Nano Every at the same baud rate as set for Bluetooth
   Serial.begin(CAL_BT_BAUDRATE);
+  Serial.println(("eChook Nano Starting"));
+  Serial.print(("Firmware Version: "));
+  Serial.println(CODE_VERSION);
 #endif
 
   configureBluetooth();  // Checks if If AT mode is set and configures HC-05 according to the BT_xxx constants defined above
@@ -105,9 +108,9 @@ void eChookRoutinesUpdate() {
   SerialCheck();
 
   static unsigned long nextThrottleReadMs = millis();
-  if (millis() > nextThrottleReadMs) {    // millis() gives milliseconds since power on. If this is greater than the nextThrottleReadMs we've calculated it will run.
-    nextThrottleReadMs += 100;            // 100 ms, 10hz
-    throttleOutput = readThrottle();            // if this is being used as the input to a motor controller it is recommended to check it at a higher frequency than 4Hz
+  if (millis() > nextThrottleReadMs) {  // millis() gives milliseconds since power on. If this is greater than the nextThrottleReadMs we've calculated it will run.
+    nextThrottleReadMs += 100;          // 100 ms, 10hz
+    throttleOutput = readThrottle();    // if this is being used as the input to a motor controller it is recommended to check it at a higher frequency than 4Hz
   }
 
   static unsigned long lastShortDataSendTime = millis();              // this is reset at the start so that the calculation time does not add to the loop time
@@ -130,15 +133,11 @@ void eChookRoutinesUpdate() {
     sendData(THROTTLE_INPUT_ID, throttleIn);
     sendData(THROTTLE_OUTPUT_ID, throttleOutput);
 
-    if (CAL_USE_IMPROVED_RPM_CALCULATION) {
-      motorRPM = readMotorRPM();
-      sendData(MOTOR_ID, motorRPM);
-    }
+    motorRPM = readMotorRPM();
+    sendData(MOTOR_ID, motorRPM);
 
-    if (CAL_USE_IMPROVED_SPEED_CALCULATION) {
-      wheelSpeed = readWheelSpeed();
-      sendData(SPEED_ID, wheelSpeed);
-    }
+    wheelSpeed = readWheelSpeed();
+    sendData(SPEED_ID, wheelSpeed);
 
     referenceVoltage = updateReferenceVoltage();
     sendData(REF_VOLTAGE_ID, referenceVoltage);
@@ -147,37 +146,23 @@ void eChookRoutinesUpdate() {
       tempOne = readTempOne();
       sendData(TEMP1_ID, tempOne);
       digitalWrite(13, HIGH);  // these are just flashing the LEDs as visual confimarion of the loop
-      digitalWrite(9, HIGH);
     }
 
     if (loopCounter == 2) {  // Functions to run every 2nd loop
       tempTwo = readTempTwo();
       sendData(TEMP2_ID, tempTwo);
-      digitalWrite(6, HIGH);
     }
 
     if (loopCounter == 3) {  // Functions to run every 3rd loop
       tempThree = readTempInternal();
       sendData(TEMP3_ID, tempThree);
       digitalWrite(13, LOW);
-      digitalWrite(9, LOW);
     }
 
     if (loopCounter == 4) {  // Functions to run every 4th loop
       loopCounter = 0;       // 4 * 0.25 makes one second, so counter resets
-
-      if (!CAL_USE_IMPROVED_SPEED_CALCULATION) {
-        wheelSpeed = readWheelSpeed();
-        sendData(SPEED_ID, wheelSpeed);
-      }
-      if (!CAL_USE_IMPROVED_RPM_CALCULATION) {
-        motorRPM = readMotorRPM();
-        sendData(MOTOR_ID, motorRPM);
-      }
       gearRatio = calculateGearRatio();
       sendData(GEAR_RATIO_ID, gearRatio);
-
-      digitalWrite(6, LOW);
     }
   }
 }
@@ -301,7 +286,7 @@ float readThrottle() {
   if (CAL_THROTTLE_VARIABLE)  // Analogue throttleOutput, not push button
   {
     tempThrottle = (tempThrottle / 1023) * referenceVoltage;  // Gives the actual voltage seen on the arduino Pin
-    throttleV = tempThrottle;                                // Update Global variable for throttleOutput in voltage
+    throttleV = tempThrottle;                                 // Update Global variable for throttleOutput in voltage
     // SerialA.print(tempThrottle);
     // SerialA.print(", ");
     // The following code adds dead bands to the start and end of the throttleOutput travel
@@ -316,7 +301,7 @@ float readThrottle() {
     tempThrottle = ((tempThrottle - CAL_THROTTLE_LOW) / (float)(CAL_THROTTLE_HIGH - CAL_THROTTLE_LOW)) * (255);
   } else {
     throttleV = (tempThrottle / 1023) * referenceVoltage;  // Update Global variable for throttleOutput in voltage
-    if (tempThrottle > 200)                                 // Approx 1v
+    if (tempThrottle > 200)                                // Approx 1v
     {
       tempThrottle = 255;  // full throttleOutput
     } else {
@@ -324,7 +309,7 @@ float readThrottle() {
     }
   }
 
-  throttleIn = (float)tempThrottle/2.55; // Convert to a float percentage for the output
+  throttleIn = (float)tempThrottle / 2.55;  // Convert to a float percentage for the output
 
   if (CAL_THROTTLE_RAMP) {
     // This code generates a simple ramp up in throttleOutput. The >100 is there as it will likely take about 40% throttleOutput to get the car moving, so this will give a quicker start.
@@ -332,26 +317,26 @@ float readThrottle() {
       if (currThrtlOut < 100) {
         currThrtlOut = 101;
       }
-      currThrtlOut  = currThrtlOut + 4;                  // Value dictates ramp speed. Calculated by (155/x)/10. 4 gives (155/4)/10=3.875 seconds, 2 gives 7.75 seconds, 1 gives 15.5 seconds
+      currThrtlOut = currThrtlOut + 4;    // Value dictates ramp speed. Calculated by (155/x)/10. 4 gives (155/4)/10=3.875 seconds, 2 gives 7.75 seconds, 1 gives 15.5 seconds
       if (currThrtlOut > tempThrottle) {  // Fixes the throttleOutput jitter if the increment puts output over request.
         currThrtlOut = tempThrottle;
       }
     } else {
       currThrtlOut = tempThrottle;
     }
-    
+
   } else {
     currThrtlOut = tempThrottle;
   }
 
-  
+
   if (CAL_THROTTLE_OUTPUT_EN) {
     analogWrite(MOTOR_OUT_PIN, currThrtlOut);  // This drives the motor output. Unless you are using the board to drive your motor you can comment it out.
   } else {
     analogWrite(MOTOR_OUT_PIN, 0);
   }
 
-  return (float)currThrtlOut/2.55; // Convert to a float percentage for the output
+  return (float)currThrtlOut / 2.55;  // Convert to a float percentage for the output
 }
 
 float readTempOne() {
@@ -397,110 +382,42 @@ float readTempInternal(void) {
 }
 
 float readWheelSpeed() {
-  if (CAL_WHEEL_MAGNETS > 0) {  // Only run if number of wheel magnets is greater than 0. Protects against a divide by 0 crash.
-    float wheelSpeedMetersPerSecond = 0;
+  if (CAL_WHEEL_MAGNETS == 0)  // divide by zero protection
+    return (0);
 
-    if (CAL_USE_IMPROVED_SPEED_CALCULATION) {  // Two ways to calculate wheel RPM
-      // Calculate time taken for last wheel rotation
-      float wheelRPS = 0;
-      if (millis() - lastWheelPollTime < 2000) {                        // if over 2 seconds since a poll is seen, assume stopped.
-        if (lastWheelInterval < 2000) {                                 // catches the case of first pulse in a while
-          long fullRotationMs = lastWheelInterval * CAL_WHEEL_MAGNETS;  // Ideally one motor magnet
-          wheelRPS = (float)1000 / fullRotationMs;                      // 1 second, divided by time of one rotation at current speed
-        }
-      } else {
-        wheelRPS = 0;
-      }
-      wheelSpeedMetersPerSecond = wheelRPS * (float)CAL_WHEEL_CIRCUMFERENCE;
-    } else {
-      static unsigned long lastWheelSpeedPollTime = 0;
-      // Counts the number of magnet passesdetected since the last wheel speed check,
-      //  converts to a speed in meters per second and returns that value.
-      //  Also updates the global wheel RPM value each call.
-
-      // First action is to take readings and reset the wheel count so that there are no change to the variables during the calculations or between reading and resetting:
-      int tempWheelPoll = wheelPoll;
-      wheelPoll = 0;
-      unsigned long tempLastWheelPollTime = lastWheelSpeedPollTime;
-      unsigned long tempWheelPollTime = millis();
-      lastWheelSpeedPollTime = tempWheelPollTime;
-      // Wheel RMP has been tacked into this function at a later date, so could do with re-writing really...
-      // Wheel RMP Calculations:
-      wheelRPM = (float)tempWheelPoll / (float)CAL_WHEEL_MAGNETS;                                   // gives number of rotations
-      wheelRPM = wheelRPM / ((float)(tempWheelPollTime - tempLastWheelPollTime) / (float)60000.0);  // /60,000 converts millis to minutes
-
-      // All integers in the folowing equation are cast to float so that the value is not converted to an integer at any point reducing accuracy through rounding.
-      // Next task is to calculate the distance travelled. This is dome by takin the wheel poll, which is the number of magnets that have passed the sensor since the last check
-      // and dividing it by the number of wheel magnets to give the number of revolutions, then multiply by the circumference to give distance travelled in meters:
-      float wheelDistanceTravelled = (float)tempWheelPoll / (float)CAL_WHEEL_MAGNETS * (float)CAL_WHEEL_CIRCUMFERENCE;
-      // Now determine how much time in seconds it took to travel this distance, and divide the distanve by time to get speed in meters per second.
-      wheelSpeedMetersPerSecond = wheelDistanceTravelled / ((float)(tempWheelPollTime - tempLastWheelPollTime) / (float)1000.0);  // the /1000 converts the milliseconds to seconds
+  static long nextSpeedUpdateTime = 0;
+  if (newSpeedSignal) {
+    nextSpeedUpdateTime = millis() + 3000;  //3 seconds in the future
+    newSpeedSignal = false;
+    if (lastWheelInterval > 0)  // divide by zero protection
+    {
+      float wheelRPS = 1000000.0 / ((float)(lastWheelInterval * CAL_WHEEL_MAGNETS));
+      return (wheelRPS * CAL_WHEEL_CIRCUMFERENCE);  // meters per second.
     }
-
-    // Next section of code handles the smooting:
-    speedSmoothingArray[speedSmoothingCount] = wheelSpeedMetersPerSecond;  // adds current speed into oldest position in array
-    speedSmoothingCount++;                                                 // incrememnts array position for next reading
-    if (speedSmoothingCount >= speedSmoothingSetting) {
-      speedSmoothingCount = 0;  // reset if count exceeds array length
-    }
-    wheelSpeedMetersPerSecond = 0;  // reset variable ready to sum array
-    for (int i = 0; i < speedSmoothingSetting; i++) {
-      wheelSpeedMetersPerSecond += speedSmoothingArray[i];
-    }
-    wheelSpeedMetersPerSecond = wheelSpeedMetersPerSecond / speedSmoothingSetting;  // divide summed figure by array count to get mean value
-    // SerialA.print("Speed MPS = ");
-    // SerialA.println(wheelSpeedMetersPerSecond);
-    return (wheelSpeedMetersPerSecond);  // return smoothed value
-  } else {
-    return (0);  // Num wheel magnets is 0
+  } else if (millis() > nextSpeedUpdateTime)  // over 3 seconds since last signal, assume stopped.
+  {
+    return (0);
   }
+  return wheelSpeed;  // If no new signal or timeout, return existing global value
 }
 
 float readMotorRPM() {
-  if (CAL_MOTOR_MAGNETS > 0) {  // Only run if number of motor magnets is greater than 0. Protects against a divide by 0 crash.
-    if (CAL_USE_IMPROVED_RPM_CALCULATION) {
-      float tempRpm = 0;
-      // Calculate time taken for last wheel rotation
-      if (micros() - lastMotorPollTime < 1000000) {                              // If it takes longer than 2s for a rotation, consider it stopped.
-        if (lastMotorInterval < 1000000) {                                       // catches the case of first pulse in a while
-          unsigned long fullRotationMs = lastMotorInterval * CAL_MOTOR_MAGNETS;  // Ideally one motor magnet
-          tempRpm = (float)60000000 / fullRotationMs;                            // 1 minute, divided by time of one rotation at current speed
-        }
-      } else {
-        tempRpm = 0;
-      }
+  if (CAL_MOTOR_MAGNETS == 0)  // divide by zero protection
+    return (0);
 
-      // tempRpm = motorRPM *0.5 + tempRpm *0.5;
-      //
-      // char buff[50];
-      // sprintf(buff, "Motor Interval = %lu", lastMotorInterval);
-      // SerialA.println(buff);
-      // SerialA.print("RPM = ");
-      // SerialA.println(tempRpm);
-      // lastMotorInterval = 0;
-      return (tempRpm);
-    } else {
-      static unsigned long lastMotorSpeedPollTime = 0;
-      // Counts the number of magnet passesdetected since the last Motor rpm check, converts to revolutions per minute and returns that value
-      //  First action is to take copies of the motor poll count and time so that the variables don't change during the calculations.
-      int tempMotorPoll = motorPoll;
-      motorPoll = 0;
-      unsigned long tempLastMotorPollTime = lastMotorSpeedPollTime;
-      unsigned long tempMotorPollTime = millis();
-      lastMotorSpeedPollTime = tempMotorPollTime;
-      // Now calculate the number of revolutions of the motor shaft
-      float motorRevolutions = (float)tempMotorPoll / CAL_MOTOR_MAGNETS;
-      float motorRevolutionsPerMin = motorRevolutions * 60.0;
-      float timeDiffms = tempMotorPollTime - tempLastMotorPollTime;
-      float timeDiffs = timeDiffms / 1000.0;
-      // Now use the time time passed to convert this to revolutions per minute
-      // RMP = (revolutions / latestPollTIme - lastPollTime) / 1000 to convert to Seconds) * 60 to convert to minutes
-      float motorShaftRPM = motorRevolutionsPerMin / timeDiffs;
-      return (motorShaftRPM);
+  static long nextMotorUpdateTime = 0;
+  if (newMotorSignal) {
+    nextMotorUpdateTime = millis() + 1000;  //1 seconds in the future
+    newMotorSignal = false;
+    if (lastWheelInterval > 0)  // divide by zero protection
+    {
+      return (1000000.0 / ((float)(lastMotorInterval * CAL_MOTOR_MAGNETS)) * 60);
     }
-  } else {
-    return (0);  // Num motor magnets is 0
+  } else if (millis() > nextMotorUpdateTime)  // over 3 seconds since last signal, assume stopped.
+  {
+    return (0);
   }
+  return motorRPM;  //If no new signal and no time out, return existing global value
 }
 
 float calculateGearRatio() {
@@ -524,8 +441,8 @@ float calculateGearRatio() {
 float thermistorADCToCelcius(int rawADC, uint8_t thermNumber) {
 
   // If no sensor is plugged in, rawADC reading will be close to 1023, so return 0.
-  if(rawADC > 1000)
-      return(0); 
+  if (rawADC > 1000)
+    return (0);
 
   // Steinhart-Hart Coefficients, see comment above
   // These coefficients are for the MF52AT NTC 10k thermistor, however due to thermistor tolerances each thermistor should be calibrated individually.
@@ -605,13 +522,13 @@ void sendData(char identifier, float value) {
     }
     // Send the data in the format { [id] [1] [2] }
 #ifdef NANO_EVERY
-  if(inConfig){
-    Serial.write(123);
-    Serial.write(identifier);
-    Serial.write(dataByte1);
-    Serial.write(dataByte2);
-    Serial.write(125);
-  }
+    if (inConfig) {
+      Serial.write(123);
+      Serial.write(identifier);
+      Serial.write(dataByte1);
+      Serial.write(dataByte2);
+      Serial.write(125);
+    }
 #endif
     SerialA.write(123);
     SerialA.write(identifier);
@@ -644,13 +561,13 @@ void sendData(char identifier, int value) {
       dataByte2 = (byte)tens;
     }
 #ifdef NANO_EVERY
-  if(inConfig){
-    Serial.write(123);
-    Serial.write(identifier);
-    Serial.write(dataByte1);
-    Serial.write(dataByte2);
-    Serial.write(125);
-  }
+    if (inConfig) {
+      Serial.write(123);
+      Serial.write(identifier);
+      Serial.write(dataByte1);
+      Serial.write(dataByte2);
+      Serial.write(125);
+    }
 #endif
     SerialA.write(123);
     SerialA.write(identifier);
@@ -718,15 +635,15 @@ void configureBluetooth() {
   SerialA.begin(38400);  // AT mode baud rate
   while (!SerialA) {
   }  // Wait for serial to initialise
-// #ifdef JUMPER_BT_EN
-//   // PCBV2 - Automatically set BT AT Mode by setting EN pin HIGH
-//   // digitalWrite(BT_EN_PIN, LOW);
-//   digitalWrite(BT_EN_PIN, HIGH);
-//   Serial.println("EN SET HIGH");
-//   delay(400);
-// #endif
+  // #ifdef JUMPER_BT_EN
+  //   // PCBV2 - Automatically set BT AT Mode by setting EN pin HIGH
+  //   // digitalWrite(BT_EN_PIN, LOW);
+  //   digitalWrite(BT_EN_PIN, HIGH);
+  //   Serial.println("EN SET HIGH");
+  //   delay(400);
+  // #endif
 
-uint8_t atMode = 0;
+  uint8_t atMode = 0;
 
 
 #ifdef JUMPER_BT_EN
@@ -740,32 +657,32 @@ uint8_t atMode = 0;
 
   // delay(100);
   flushSerial();
-  SerialA.print("AT\r\n");  
-  SerialA.flush(); // Waits for transmission to end
+  SerialA.print("AT\r\n");
+  SerialA.flush();  // Waits for transmission to end
   waitForSerial(400);
   delay(50);
   String response = (SerialA.readStringUntil('\n'));
   response.trim();
-  if (response == "OK"){
+  if (response == "OK") {
     atMode = 1;
 #ifdef NANO_EVERY
     Serial.println("AT MODE!");
 #endif
-  } else{
+  } else {
 #ifdef NANO_EVERY
     Serial.print("Error - ");
-    Serial.println(response);  
+    Serial.println(response);
 #endif
   }
 
-if(!atMode){ // Entering AT mode failed
-  Serial.println("HC-05 Configuration Failed");
+  if (!atMode) {  // Entering AT mode failed
+    Serial.println("HC-05 Configuration Failed");
 #ifdef JUMPER_BT_EN
     digitalWrite(BT_EN_PIN, LOW);
 #endif
-  SerialA.println("AT+RESET\r\n");  // has to be in the middle to provide a suitable delay before and after
-  return;
-}
+    SerialA.println("AT+RESET\r\n");  // has to be in the middle to provide a suitable delay before and after
+    return;
+  }
 
   uint8_t btNameSet = 0;  // These will be set to 1 when each is successfully updated
   uint8_t btBaudSet = 0;
@@ -777,18 +694,18 @@ if(!atMode){ // Entering AT mode failed
   SerialA.print("AT+NAME=");
   SerialA.print(CAL_BT_NAME);
   SerialA.print("\r\n");
-  SerialA.flush(); //Wait for transmission to end
+  SerialA.flush();  //Wait for transmission to end
   // Now Check Response
   waitForSerial(500);
   delay(50);
   response = (SerialA.readStringUntil('\n'));
   response.trim();
-  if (response == "OK"){
+  if (response == "OK") {
 #ifdef NANO_EVERY
     Serial.println("HC-05 Name Set");
 #endif
     btNameSet = 1;
-  } 
+  }
 
 
   // Set Baud Rate_____________________________________________
@@ -797,41 +714,40 @@ if(!atMode){ // Entering AT mode failed
   SerialA.print("AT+UART=");  // command to change BAUD rate
   SerialA.print(CAL_BT_BAUDRATE);
   SerialA.println(",0,0");  // Parity and Stop bits
-  SerialA.flush(); //Wait for transmission to end
+  SerialA.flush();          //Wait for transmission to end
   // Now Check Response.
   waitForSerial(500);
   delay(50);
   response = (SerialA.readStringUntil('\n'));
   response.trim();
-  if (response == "OK"){
+  if (response == "OK") {
 #ifdef NANO_EVERY
     Serial.println("HC-05 Baudrate Set");
 #endif
     btBaudSet = 1;
-  } 
+  }
 
-// Set Bluetooth Password
+  // Set Bluetooth Password
   flushSerial();  // Flush the serial input buffer
   SerialA.print("AT+PSWD=");
   SerialA.print(CAL_BT_PASSWORD);
   SerialA.print("\r\n");
-  SerialA.flush(); //Wait for transmission to end
+  SerialA.flush();  //Wait for transmission to end
   // Now Check Response
   waitForSerial(500);
   delay(50);
   response = (SerialA.readStringUntil('\n'));
   response.trim();
-  if (response == "OK"){
+  if (response == "OK") {
 #ifdef NANO_EVERY
     Serial.println("HC-05 Password Set");
 #endif
     btPassSet = 1;
-  } 
+  }
 
 
   // Check all operations completed successfully
-  if (btBaudSet && btNameSet && btPassSet)
-  {
+  if (btBaudSet && btNameSet && btPassSet) {
     flushSerial();
 #ifdef JUMPER_BT_EN
     digitalWrite(BT_EN_PIN, LOW);
@@ -841,8 +757,8 @@ if(!atMode){ // Entering AT mode failed
 #endif
     delay(100);
     SerialA.println("AT+RESET\r\n");  // has to be in the middle to provide a suitable delay before and after
-    SerialA.flush(); // Wait for transmission to end.
-    
+    SerialA.flush();                  // Wait for transmission to end.
+
   } else {
     int flashCount = 0;
     while (flashCount < 10)  // 10 fast flashes indicate not configured successfully

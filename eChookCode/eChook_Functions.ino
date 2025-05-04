@@ -642,6 +642,20 @@ void configureBluetooth() {
   uint8_t btPassSet = 0;
 
 
+  // Get and print HC-05 Firmware Version
+#ifdef NANO_EVERY  
+  flushSerial(); 
+  SerialA.print(F("AT+VERSION?\r\n"));
+  SerialA.flush();     // Waits for transmission to end
+  waitForSerial(500);  // Waits for start of response with 500ms timeout
+  delay(50);           // Now waits to ensure full response is recieved
+  String responseFW = (SerialA.readStringUntil('\n'));
+  response.trim();  //removes any leading or trailing whitespace
+  
+  Serial.print(F("HC-05 Firmware Version: "));
+  Serial.println(responseFW);
+#endif
+
   // Set Bluetooth Name
   flushSerial();  // Flush the buffer. Not entirely sure what is in there to flush at this point, but it is needed!
   SerialA.print(F("AT+NAME="));

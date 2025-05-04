@@ -49,8 +49,8 @@ void eChookSetup() {
   EEPROMSetup();
 
   referenceVoltage = updateReferenceVoltage();
-  
-  #ifdef NANO_EVERY
+
+#ifdef NANO_EVERY
   Serial.print(("\nSetup complete in "));
   Serial.print(millis());
   Serial.println(("ms."));
@@ -636,6 +636,19 @@ void configureBluetooth() {
     return;
   }
 
+#ifdef NANO_EVERY
+  flushSerial();  // Flush the buffer. Not entirely sure what is in there to flush at this point, but it is needed!
+  SerialA.print(F("AT+VERSION?\r\n"));
+  SerialA.flush();  //Wait for transmission to end
+  // Now Check Response
+  waitForSerial(500);
+  delay(50);
+  response = (SerialA.readStringUntil('\n'));
+  response.trim();
+  Serial.print(F("HC-05 Version: "));
+  Serial.println(response);
+#endif
+
 
   uint8_t btNameSet = 0;  // These will be set to 1 when each is successfully updated
   uint8_t btBaudSet = 0;
@@ -643,15 +656,15 @@ void configureBluetooth() {
 
 
   // Get and print HC-05 Firmware Version
-#ifdef NANO_EVERY  
-  flushSerial(); 
+#ifdef NANO_EVERY
+  flushSerial();
   SerialA.print(F("AT+VERSION?\r\n"));
   SerialA.flush();     // Waits for transmission to end
   waitForSerial(500);  // Waits for start of response with 500ms timeout
   delay(50);           // Now waits to ensure full response is recieved
   String responseFW = (SerialA.readStringUntil('\n'));
   response.trim();  //removes any leading or trailing whitespace
-  
+
   Serial.print(F("HC-05 Firmware Version: "));
   Serial.println(responseFW);
 #endif
@@ -685,7 +698,7 @@ void configureBluetooth() {
   SerialA.print(F("AT+UART="));  // command to change BAUD rate
   SerialA.print(CAL_BT_BAUDRATE);
   SerialA.println(F(",0,0"));  // Parity and Stop bits
-  SerialA.flush();          //Wait for transmission to end
+  SerialA.flush();             //Wait for transmission to end
   // Now Check Response.
   waitForSerial(500);
   delay(50);
@@ -736,7 +749,7 @@ void configureBluetooth() {
 #endif
     delay(100);
     SerialA.println(F("AT+RESET\r\n"));  // has to be in the middle to provide a suitable delay before and after
-    SerialA.flush();                  // Wait for transmission to end.
+    SerialA.flush();                     // Wait for transmission to end.
 
   } else {
     int flashCount = 0;

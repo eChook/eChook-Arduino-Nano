@@ -666,199 +666,204 @@ void sendData(char identifier, int value) {
   }
 }
 
-// HC-05 CONFIGURATION FUNCTIONS
-// int checkBtAtMode()  // Checks if the HC-05 Bluetooth module is in AT mode. Returns 1 if it is, 0 otherwise
-// {
-//   int atMode = 0;
-//   SerialA.begin(38400);  // AT mode baud rate
-//   while (!SerialA) {
-//   }  // Wait for serial to initialise
-
-// #ifdef JUMPER_BT_EN
-//   digitalWrite(BT_EN_PIN, LOW);
-// #endif
-
-//   delay(400);
-
-//   SerialA.print("AT\r\n");  // for some reason when AT is sent the first time, an error is always returned.
-//   delay(400);               // wait for response
-//   flushSerial();
-//   while (SerialA.available())  // to check if the flush worked
-//   {
-//     SerialA.println((char)SerialA.read());
-//   }
-//   SerialA.println("AT");
-//   delay(400);
-//   char tempOne = (char)SerialA.read();
-//   delay(20);
-//   char tempTwo = (char)SerialA.read();
-//   if (tempOne == 'O' && tempTwo == 'K')  // Was the response "OK"?
-//   {
-//     //    SerialA.println("AT Mode Confirmed");
-//     digitalWrite(13, HIGH);
-//     atMode = 1;
-//   } else {
-//     //    SerialA.println("AT Mode NOT Confirmed");
-//     //    SerialA.print("Char 1 = ");
-//     //    SerialA.print(tempOne);
-//     //    SerialA.print("Char 2 = ");
-//     //    SerialA.println(tempTwo);
-//   }
-
-//   SerialA.begin(CAL_BT_BAUDRATE);  // reset baud rate
-//   while (!Serial) {
-//   }  // wait while serial is inialising
-//   return (atMode);
-// }
-
+// HC-05 CONFIGURATION
 void configureBluetooth() {
+
+  Serial.println(F("Attempting to Configure Bluetooth (HC-05 Module)"));
 
   flushSerial();
 
   SerialA.begin(38400);  // AT mode baud rate
   while (!SerialA) {
   }  // Wait for serial to initialise
-// #ifdef JUMPER_BT_EN
-//   // PCBV2 - Automatically set BT AT Mode by setting EN pin HIGH
-//   // digitalWrite(BT_EN_PIN, LOW);
-//   digitalWrite(BT_EN_PIN, HIGH);
-//   Serial.println("EN SET HIGH");
-//   delay(400);
-// #endif
 
-uint8_t atMode = 0;
+  uint8_t atMode = 0;
 
 
-#ifdef JUMPER_BT_EN
-  // PCBV2 - Automatically set BT AT Mode by setting EN pin HIGH
-  // digitalWrite(BT_EN_PIN, LOW);
-  // delay(100);
+#ifdef JUMPER_BT_EN  // PCBV2 - Automatically set BT AT Mode by setting EN pin HIGH
   digitalWrite(BT_EN_PIN, HIGH);
-  // Serial.println("EN SET HIGH");
-  // delay(300);
+  delay(100);
 #endif
 
-  // delay(100);
-  flushSerial();
-  SerialA.print("AT\r\n");  
-  SerialA.flush(); // Waits for transmission to end
-  waitForSerial(400);
-  delay(50);
-  String response = (SerialA.readStringUntil('\n'));
-  response.trim();
-  if (response == "OK"){
+
+  if (atModeCheck()) {
     atMode = 1;
 #ifdef NANO_EVERY
-    Serial.println("AT MODE!");
+    Serial.println(F("HC-05 AT MODE Entered"));
 #endif
-  } else{
+  } else {  // If AT Mode not entered, send error messages, and exit config gracefully
 #ifdef NANO_EVERY
-    Serial.print("Error - ");
-    Serial.println(response);  
+    Serial.println(F("HC-05 not in AT Mode"));
+    Serial.println(F("To program HC-05 Module, perform a cold boot."));
 #endif
-  }
 
-if(!atMode){ // Entering AT mode failed
-  Serial.println("HC-05 Configuration Failed");
 #ifdef JUMPER_BT_EN
     digitalWrite(BT_EN_PIN, LOW);
 #endif
-  SerialA.println("AT+RESET\r\n");  // has to be in the middle to provide a suitable delay before and after
-  return;
-}
+
+    SerialA.println(F("AT+RESET\r\n"));  // Unlikely event - Just in case it actually had entered, attempt to exit.
+    return;
+  }
+
 
   uint8_t btNameSet = 0;  // These will be set to 1 when each is successfully updated
   uint8_t btBaudSet = 0;
   uint8_t btPassSet = 0;
 
+  // Get and print HC-05 Firmware Version
+#ifdef NANO_EVERY
+  flushSerial();
+  SerialA.print(F("AT+VERSION?\r\n"));
+  SerialA.flush();     // Waits for transmission to end
+  waitForSerial(100);  // Waits for start of response with 500ms timeout
+  delay(50);           // Now waits to ensure full response is recieved
+  String response = (SerialA.readStringUntil('\n'));
+  response.trim();  //removes any leading or trailing whitespace
+
+  Serial.print(F("HC-05 Firmware Version: "));
+  Serial.println(response);
+
+  if (response.equals("+VERSION:hc05V2.3_le OK")) {
+    Serial.println(F("\n\r******************"));
+    Serial.println(F("WARNING - This is not an HC-05 compatible Bluetooth module as it uses BLE instead of Bluetooth 2.0"));
+    Serial.println(F("The eChook Nano CANNOT work with this module. Setup will not continue."));
+    Serial.println(F("Please see https://docs.echook.uk/troubleshooting/bluetooth"));
+    Serial.println(F("******************\n\r"));
+    digitalWrite(13, HIGH);
+    while (1) {}
+  }
+#endif
 
   // Set Bluetooth Name
   flushSerial();  // Flush the buffer. Not entirely sure what is in there to flush at this point, but it is needed!
-  SerialA.print("AT+NAME=");
+  SerialA.print(F("AT+NAME=\""));
   SerialA.print(CAL_BT_NAME);
-  SerialA.print("\r\n");
-  SerialA.flush(); //Wait for transmission to end
+  SerialA.print(F("\"\r\n"));
+  SerialA.flush();  //Wait for transmission to end
   // Now Check Response
-  waitForSerial(500);
+  waitForSerial(100);
   delay(50);
   response = (SerialA.readStringUntil('\n'));
   response.trim();
-  if (response == "OK"){
+  if (response.equals("OK")) {
 #ifdef NANO_EVERY
     Serial.println("HC-05 Name Set");
 #endif
     btNameSet = 1;
-  } 
+  } else {
+#ifdef NANO_EVERY
+    Serial.println(F("ERROR - HC-05 Name NOT Set"));
+#endif
+  }
 
 
   // Set Baud Rate_____________________________________________
   // delay(100);
   flushSerial();
-  SerialA.print("AT+UART=");  // command to change BAUD rate
+  SerialA.print(F("AT+UART="));  // command to change BAUD rate
   SerialA.print(CAL_BT_BAUDRATE);
-  SerialA.println(",0,0");  // Parity and Stop bits
-  SerialA.flush(); //Wait for transmission to end
+  SerialA.println(F(",0,0"));  // Parity and Stop bits
+  SerialA.flush();             //Wait for transmission to end
   // Now Check Response.
-  waitForSerial(500);
+  waitForSerial(100);
   delay(50);
   response = (SerialA.readStringUntil('\n'));
   response.trim();
-  if (response == "OK"){
+  if (response.equals("OK")) {
 #ifdef NANO_EVERY
-    Serial.println("HC-05 Baudrate Set");
+    Serial.println(F("HC-05 Baudrate Set"));
 #endif
     btBaudSet = 1;
-  } 
+  } else {
+#ifdef NANO_EVERY
+    Serial.println(F("ERROR - HC-05 Baud Rate NOT Set"));
+#endif
+  }
 
-// Set Bluetooth Password
+  // Set Bluetooth Password
   flushSerial();  // Flush the serial input buffer
-  SerialA.print("AT+PSWD=");
+  SerialA.print(F("AT+PSWD=\""));
   SerialA.print(CAL_BT_PASSWORD);
-  SerialA.print("\r\n");
-  SerialA.flush(); //Wait for transmission to end
+  SerialA.print(F("\"\r\n"));
+  SerialA.flush();  //Wait for transmission to end
   // Now Check Response
-  waitForSerial(500);
+  waitForSerial(100);
   delay(50);
   response = (SerialA.readStringUntil('\n'));
   response.trim();
-  if (response == "OK"){
+  if (response.equals("OK")) {
 #ifdef NANO_EVERY
-    Serial.println("HC-05 Password Set");
+    Serial.println(F("HC-05 Password Set"));
 #endif
     btPassSet = 1;
-  } 
+  } else {
+#ifdef NANO_EVERY
+    Serial.println(F("ERROR - HC-05 Password NOT Set with error: "));
+    Serial.println(response);
+#endif
+  }
 
 
   // Check all operations completed successfully
-  if (btBaudSet && btNameSet && btPassSet)
-  {
+  if (btBaudSet && btNameSet && btPassSet) {
     flushSerial();
 #ifdef JUMPER_BT_EN
     digitalWrite(BT_EN_PIN, LOW);
 #endif
 #ifdef NANO_EVERY
-    Serial.println("HC-05 Configuration Successful, Resetting...");
+    Serial.println(F("HC-05 Configuration Successful, Resetting..."));
 #endif
     delay(100);
-    SerialA.println("AT+RESET\r\n");  // has to be in the middle to provide a suitable delay before and after
-    SerialA.flush(); // Wait for transmission to end.
-    
-  } else {
-    int flashCount = 0;
-    while (flashCount < 10)  // 10 fast flashes indicate not configured successfully
-    {
-      digitalWrite(13, HIGH);
-      delay(50);
-      digitalWrite(13, LOW);
-      delay(50);
-      flashCount++;
-    }
+    SerialA.println(F("AT+RESET\r\n"));  // has to be in the middle to provide a suitable delay before and after
+    SerialA.flush();                     // Wait for transmission to end.
+
+    // } else {
+    //   int flashCount = 0;
+    //   while (flashCount < 10)  // 10 fast flashes indicate not configured successfully
+    //   {
+    //     digitalWrite(13, HIGH);
+    //     delay(50);
+    //     digitalWrite(13, LOW);
+    //     delay(50);
+    //     flashCount++;
+    //   }
+  }
+  // Send the reset command.
+  // delay(100);
+  // SerialA.println(F("AT+RESET\r\n"));  // has to be in the middle to provide a suitable delay before and after
+  // SerialA.flush();
+
+  // Test if AT mode has successfuly exited, if not, reset until it does!
+  digitalWrite(13, HIGH);
+
+  while (atMode) {
+    delay(100);
+    flushSerial();
+    SerialA.println(F("AT+RESET\r\n"));  // has to be in the middle to provide a suitable delay before and after
+    SerialA.flush();
+    delay(100);
+    atMode = atModeCheck();
   }
 
   SerialA.begin(CAL_BT_BAUDRATE);  // reset baud rate
   while (!SerialA) {
   }  // wait while serial is inialising
   return;
+}
+
+int atModeCheck() {
+  flushSerial();
+  SerialA.print(F("AT\r\n"));
+  SerialA.flush();     // Waits for transmission to end
+  waitForSerial(100);  // Waits for start of response with 500ms timeout
+  delay(50);           // Now waits to ensure full response is recieved
+  String response = (SerialA.readStringUntil('\n'));
+  response.trim();  //removes any leading or trailing whitespace
+  if (response.equals("OK")) {
+    return 1;
+  } else {
+    return 0;
+  }
 }
 
 void flushSerial() {  // SerialA.flush() flushes the write buffer, this function manually flushes the read buffer.

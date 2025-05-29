@@ -71,14 +71,11 @@ const uint8_t currentSmoothingSetting = 4; //current is sampled every 250ms, the
 float currentSmoothingArray[currentSmoothingSetting];
 uint8_t currentSmoothingCount = 0;
 
-//Speed Smoothing Variables:
 
-const uint8_t speedSmoothingSetting = 3; //speed is sampled every 1s, therefore 3 makes 3 seconds of smoothing
-float speedSmoothingArray[speedSmoothingSetting];
-uint8_t speedSmoothingCount = 0;
-
-// Experimental Area Variables:
-volatile unsigned long lastMotorPollTime = 5000000; // Initialise poll times high so routine doesn't try to calculate an infinite speed at startup
+// ISR Wheel and Motor Speed Variables
+volatile unsigned long lastMotorPollTime = 0;
 volatile unsigned long lastMotorInterval = 0;
-volatile unsigned long lastWheelPollTime = 5000; // Initialise poll times high so routine doesn't try to calculate an infinite speed at startup
+volatile unsigned long lastWheelPollTime = 0;
 volatile unsigned long lastWheelInterval = 0;
+volatile bool newSpeedSignal = 0;
+volatile bool newMotorSignal = 0;

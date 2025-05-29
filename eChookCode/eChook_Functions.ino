@@ -607,53 +607,56 @@ void configureBluetooth() {
   delay(100);
 #endif
 
-  flushSerial();
-  SerialA.print(F("AT\r\n"));
-  SerialA.flush();     // Waits for transmission to end
-  waitForSerial(500);  // Waits for start of response with 500ms timeout
-  delay(50);           // Now waits to ensure full response is recieved
-  String response = (SerialA.readStringUntil('\n'));
-  response.trim();  //removes any leading or trailing whitespace
-  if (response.equals("OK")) {
+
+  if (atModeCheck()) {
+
     atMode = 1;
 #ifdef NANO_EVERY
     Serial.println(F("HC-05 AT MODE Entered"));
 #endif
   } else {  // If AT Mode not entered, send error messages, and exit config gracefully
 #ifdef NANO_EVERY
-    Serial.print(F("HC-05 not in AT Mode (Response: "));
-    Serial.print(response);
-    Serial.println(F(")"));
+    Serial.println(F("HC-05 not in AT Mode"));
     Serial.println(F("To program HC-05 Module, perform a cold boot."));
 #endif
 
 #ifdef JUMPER_BT_EN
     digitalWrite(BT_EN_PIN, LOW);
 #endif
-
-
+    
     SerialA.println(F("AT+RESET\r\n"));  // Unlikely event - Just in case it actually had entered, attempt to exit.
     return;
   }
 
-#ifdef NANO_EVERY
-  flushSerial();  // Flush the buffer. Not entirely sure what is in there to flush at this point, but it is needed!
-  SerialA.print(F("AT+VERSION?\r\n"));
-  SerialA.flush();  //Wait for transmission to end
-  // Now Check Response
-  waitForSerial(500);
-  delay(50);
-  response = (SerialA.readStringUntil('\n'));
-  response.trim();
-  Serial.print(F("HC-05 Version: "));
-  Serial.println(response);
-#endif
 
 
   uint8_t btNameSet = 0;  // These will be set to 1 when each is successfully updated
   uint8_t btBaudSet = 0;
   uint8_t btPassSet = 0;
 
+  // Get and print HC-05 Firmware Version
+#ifdef NANO_EVERY
+  flushSerial();
+  SerialA.print(F("AT+VERSION?\r\n"));
+  SerialA.flush();     // Waits for transmission to end
+  waitForSerial(100);  // Waits for start of response with 500ms timeout
+  delay(50);           // Now waits to ensure full response is recieved
+  String response = (SerialA.readStringUntil('\n'));
+  response.trim();  //removes any leading or trailing whitespace
+
+  Serial.print(F("HC-05 Firmware Version: "));
+  Serial.println(response);
+
+  if (response.equals("+VERSION:hc05V2.3_le OK")) {
+    Serial.println(F("\n\r******************"));
+    Serial.println(F("WARNING - This is not an HC-05 compatible Bluetooth module as it uses BLE instead of Bluetooth 2.0"));
+    Serial.println(F("The eChook Nano CANNOT work with this module. Setup will not continue."));
+    Serial.println(F("Please see https://docs.echook.uk/troubleshooting/bluetooth"));
+    Serial.println(F("******************\n\r"));
+    digitalWrite(13, HIGH);
+    while (1) {}
+  }
+#endif
 
   // Get and print HC-05 Firmware Version
 #ifdef NANO_EVERY
@@ -671,12 +674,13 @@ void configureBluetooth() {
 
   // Set Bluetooth Name
   flushSerial();  // Flush the buffer. Not entirely sure what is in there to flush at this point, but it is needed!
-  SerialA.print(F("AT+NAME="));
+
+  SerialA.print(F("AT+NAME=\""));
   SerialA.print(CAL_BT_NAME);
-  SerialA.print(F("\r\n"));
+  SerialA.print(F("\"\r\n"));
   SerialA.flush();  //Wait for transmission to end
   // Now Check Response
-  waitForSerial(500);
+  waitForSerial(100);
   delay(50);
   response = (SerialA.readStringUntil('\n'));
   response.trim();
@@ -700,7 +704,7 @@ void configureBluetooth() {
   SerialA.println(F(",0,0"));  // Parity and Stop bits
   SerialA.flush();             //Wait for transmission to end
   // Now Check Response.
-  waitForSerial(500);
+  waitForSerial(100);
   delay(50);
   response = (SerialA.readStringUntil('\n'));
   response.trim();
@@ -717,12 +721,14 @@ void configureBluetooth() {
 
   // Set Bluetooth Password
   flushSerial();  // Flush the serial input buffer
-  SerialA.print(F("AT+PSWD="));
+
+  SerialA.print(F("AT+PSWD=\""));
   SerialA.print(CAL_BT_PASSWORD);
-  SerialA.print(F("\r\n"));
+  SerialA.print(F("\"\r\n"));
+
   SerialA.flush();  //Wait for transmission to end
   // Now Check Response
-  waitForSerial(500);
+  waitForSerial(100);
   delay(50);
   response = (SerialA.readStringUntil('\n'));
   response.trim();
@@ -733,7 +739,8 @@ void configureBluetooth() {
     btPassSet = 1;
   } else {
 #ifdef NANO_EVERY
-    Serial.println(F("ERROR - HC-05 Password NOT Set"));
+    Serial.println(F("ERROR - HC-05 Password NOT Set with error: "));
+    Serial.println(response);
 #endif
   }
 
@@ -750,17 +757,19 @@ void configureBluetooth() {
     delay(100);
     SerialA.println(F("AT+RESET\r\n"));  // has to be in the middle to provide a suitable delay before and after
     SerialA.flush();                     // Wait for transmission to end.
+  }
+  
+  // Test if AT mode has successfuly exited, if not, reset until it does!
+  digitalWrite(13, HIGH);
 
-  } else {
-    int flashCount = 0;
-    while (flashCount < 10)  // 10 fast flashes indicate not configured successfully
-    {
-      digitalWrite(13, HIGH);
-      delay(50);
-      digitalWrite(13, LOW);
-      delay(50);
-      flashCount++;
-    }
+  while (atMode) {
+    delay(100);
+    flushSerial();
+    SerialA.println(F("AT+RESET\r\n"));  // has to be in the middle to provide a suitable delay before and after
+    SerialA.flush();
+    delay(100);
+    atMode = atModeCheck();
+
   }
   // Send the reset command.
   delay(100);
@@ -771,6 +780,21 @@ void configureBluetooth() {
   while (!SerialA) {
   }  // wait while serial is inialising
   return;
+}
+
+int atModeCheck() {
+  flushSerial();
+  SerialA.print(F("AT\r\n"));
+  SerialA.flush();     // Waits for transmission to end
+  waitForSerial(100);  // Waits for start of response with 500ms timeout
+  delay(50);           // Now waits to ensure full response is recieved
+  String response = (SerialA.readStringUntil('\n'));
+  response.trim();  //removes any leading or trailing whitespace
+  if (response.equals("OK")) {
+    return 1;
+  } else {
+    return 0;
+  }
 }
 
 void flushSerial() {  // SerialA.flush() flushes the write buffer, this function manually flushes the read buffer.

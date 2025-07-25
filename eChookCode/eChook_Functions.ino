@@ -1,3 +1,7 @@
+/**
+ * @brief Performs all setup routines for the eChook board.
+ * Initializes pins, debounces, serial communication, Bluetooth, EEPROM, and reference voltage.
+ */
 void eChookSetup() {
   pinSetup();  // Sets Input/Output for all pins. Function found in eChook_Functions.ino.
 
@@ -57,6 +61,9 @@ void eChookSetup() {
 #endif
 }
 
+/**
+ * @brief Configures pin modes and sets up interrupts for the board.
+ */
 void pinSetup() {
 
 #ifdef JUMPER_I2C
@@ -102,6 +109,10 @@ void pinSetup() {
 #endif
 }
 
+/**
+ * @brief Updates sensor readings and sends data at defined intervals.
+ * Handles periodic updates for throttle, voltage, current, temperature, speed, and gear ratio.
+ */
 void eChookRoutinesUpdate() {
 
   // We want to check different variables at different rates. For most variables 0.25 seconds will be good for logging and analysis.
@@ -172,6 +183,9 @@ void eChookRoutinesUpdate() {
   }
 }
 
+/**
+ * @brief Checks the state of each button and sends updates over Bluetooth if pressed.
+ */
 void buttonChecks() {  // Checks state of each button, if a press is detected sends the data over bluetooth
   cycleButtonDebounce.update();
   launchButtonDebounce.update();
@@ -217,7 +231,10 @@ void buttonChecks() {  // Checks state of each button, if a press is detected se
   }
 }
 
-// Reference Voltage Update Function
+/**
+ * @brief Updates and returns the reference voltage for ADC calculations. Only works on ATMEGA328 based boards.
+ * @return The calculated reference voltage.
+ */
 float updateReferenceVoltage() {
 #ifdef NANO_EVERY
   // TODO - implement properly for Arduino Nano Every
@@ -249,8 +266,10 @@ float updateReferenceVoltage() {
 #endif
 }
 
-// Sensor Reading Functions
-
+/**
+ * @brief Reads and calculates the total battery voltage.
+ * @return The total battery voltage in volts.
+ */
 float readVoltageTotal() {                                // Reads in the ADC value for the 24v input, converts it to a voltage, returns the voltage value.
   float tempVoltage = analogRead(VBATT_IN_PIN);           // this will give a 10 bit value of the voltage with 1024 representing the ADC reference voltage of 5V
   tempVoltage = (tempVoltage / 1024) * referenceVoltage;  // This gives the actual voltage seen at the arduino pin, assuming reference voltage of 5v
@@ -258,6 +277,10 @@ float readVoltageTotal() {                                // Reads in the ADC va
   return (tempVoltage);
 }
 
+/**
+ * @brief Reads and calculates the lower battery voltage.
+ * @return The lower battery voltage in volts.
+ */
 float readVoltageLower() {                                // Reads in the ADC value for the 12v input, converts it to a voltage, returns the voltage value.
   float tempVoltage = analogRead(VBATT1_IN_PIN);          // this will give a 10 bit value of the voltage with 1024 representing the ADC reference voltage of 5V
   tempVoltage = (tempVoltage / 1024) * referenceVoltage;  // This gives the actual voltage seen at the arduino pin, assuming reference voltage of 5v
@@ -265,6 +288,10 @@ float readVoltageLower() {                                // Reads in the ADC va
   return (tempVoltage);
 }
 
+/**
+ * @brief Reads, smooths, and calculates the Current value.
+ * @return The Current in amps.
+ */
 float readCurrent() {  // Reads in ACC input from the differential amplifier, converts it to the current value and smooths it
   float tempCurrent = analogRead(AMPS_IN_PIN);
   tempCurrent = (tempCurrent / 1024) * referenceVoltage;       // gives voltage output of current sensor.
@@ -284,6 +311,10 @@ float readCurrent() {  // Reads in ACC input from the differential amplifier, co
   return (tempCurrent);                                 // return the final smoothed value
 }
 
+/**
+ * @brief Reads and processes the throttle input.
+ * @return The throttle output as a percentage.
+ */
 float readThrottle() {
   static int currThrtlOut = 0;
   float tempThrottle = analogRead(THROTTLE_IN_PIN);
@@ -344,11 +375,19 @@ float readThrottle() {
   return (float)currThrtlOut / 2.55;  // Convert to a float percentage for the output
 }
 
+/**
+ * @brief Reads and calculates the temperature from thermistor 1.
+ * @return The temperature in Celsius.
+ */
 float readTempOne() {
   float temp = thermistorADCToCelcius(analogRead(TEMP1_IN_PIN), 1);  // use the thermistor function to turn the ADC reading into a temperature
   return (temp);                                                     // return Temperature.
 }
 
+/**
+ * @brief Reads and calculates the temperature from thermistor 2.
+ * @return The temperature in Celsius.
+ */
 float readTempTwo() {
   float temp = thermistorADCToCelcius(analogRead(TEMP2_IN_PIN), 2);
   return (temp);
@@ -356,10 +395,45 @@ float readTempTwo() {
 
 // Reading the interanl arduino tempreature - notes
 // on the accuracy and calibration here: https://playground.arduino.cc/Main/InternalTemperatureSensor/
+/**
+ * @brief Reads and calculates the internal temperature of the Arduino.
+ * @return The internal temperature in Celsius.
+ */
 float readTempInternal(void) {
 #ifdef NANO_EVERY
-  // TODO - implement for Arduino Nano Every
-  return 0;
+  // Arduino Nano Every: Read internal temperature sensor
+  // Based on ATmega4809 datasheet and Arduino core implementation
+  uint16_t adc;
+  float temperature;
+
+  // Save current ADC settings
+  uint8_t oldSAMPCTRL = ADC0.SAMPCTRL;
+  uint8_t oldCTRLC = ADC0.CTRLC;
+  uint8_t oldMUXPOS = ADC0.MUXPOS;
+
+  // Configure ADC for internal temperature sensor
+  ADC0.CTRLC = ADC_PRESC_DIV4_gc | ADC_REFSEL_INTREF_gc; // 1.1V reference
+  ADC0.MUXPOS = ADC_MUXPOS_TEMPSENSE_gc; // Select temperature sensor
+  ADC0.SAMPCTRL = 0x3F; // Maximum sampling time
+
+  ADC0.COMMAND = ADC_STCONV_bm; // Start conversion
+  while (!(ADC0.INTFLAGS & ADC_RESRDY_bm)); // Wait for result ready
+
+  adc = ADC0.RES; // Read ADC result
+
+  // Restore ADC settings
+  ADC0.SAMPCTRL = oldSAMPCTRL;
+  ADC0.CTRLC = oldCTRLC;
+  ADC0.MUXPOS = oldMUXPOS;
+
+  // Convert ADC value to temperature (approximate, not factory calibrated)
+  // Formula from ATmega4809 datasheet, section 27.3.1
+  // Typical: 1 LSB = 1°C, 300 = 25°C
+  temperature = (float)adc - 300.0f;
+  temperature += 25.0f;
+
+  return temperature; // Note: This is an approximate value and may need calibration for accuracy.
+
 #else
   unsigned int wADC;
   float t;
@@ -386,6 +460,10 @@ float readTempInternal(void) {
 #endif
 }
 
+/**
+ * @brief Calculates and returns the wheel speed.
+ * @return The wheel speed in meters per second.
+ */
 float readWheelSpeed() {
   if (CAL_WHEEL_MAGNETS == 0)  // divide by zero protection
     return (0);
@@ -406,6 +484,10 @@ float readWheelSpeed() {
   return wheelSpeed;  // If no new signal or timeout, return existing global value
 }
 
+/**
+ * @brief Calculates and returns the motor RPM.
+ * @return The motor RPM.
+ */
 float readMotorRPM() {
   if (CAL_MOTOR_MAGNETS == 0)  // divide by zero protection
     return (0);
@@ -425,6 +507,10 @@ float readMotorRPM() {
   return motorRPM;  //If no new signal and no time out, return existing global value
 }
 
+/**
+ * @brief Calculates the gear ratio from motor and wheel RPM.
+ * @return The calculated gear ratio.
+ */
 float calculateGearRatio() {
   float tempGearRatio = 0;
   if (wheelRPM) {
@@ -443,6 +529,12 @@ float calculateGearRatio() {
 // use a different thermistor the coefficients should be given in the datasheet, and if not, can be calculated using this calculator:
 // http://www.thinksrs.com/downloads/programs/Therm%20Calc/NTCCalibrator/NTCcalculator.htm
 
+/**
+ * @brief Converts a thermistor ADC reading to Celsius using the Steinhart-Hart equation.
+ * @param rawADC The raw ADC value from the thermistor pin.
+ * @param thermNumber The thermistor number (1 or 2) to select calibration constants.
+ * @return The calculated temperature in Celsius.
+ */
 float thermistorADCToCelcius(int rawADC, uint8_t thermNumber) {
 
   // If no sensor is plugged in, rawADC reading will be close to 1023, so return 0.
@@ -497,6 +589,11 @@ float thermistorADCToCelcius(int rawADC, uint8_t thermNumber) {
 // identifier:  see definitions in the Globals.h file
 // value:       the value to send (typically some caluclated value from a sensor)
 
+/**
+ * @brief Sends a float value over Bluetooth using a custom packet format.
+ * @param identifier The data identifier.
+ * @param value The float value to send.
+ */
 void sendData(char identifier, float value) {
   if (!DEBUG_MODE)  // Only runs if debug mode is LOW (0)
   {
@@ -548,7 +645,11 @@ void sendData(char identifier, float value) {
   }
 }
 
-/** override for integer values*/
+/**
+ * @brief Sends an integer value over Bluetooth using a custom packet format.
+ * @param identifier The data identifier.
+ * @param value The integer value to send.
+ */
 void sendData(char identifier, int value) {
   if (!DEBUG_MODE) {
     byte dataByte1;
@@ -588,7 +689,9 @@ void sendData(char identifier, int value) {
   }
 }
 
-// HC-05 CONFIGURATION
+/**
+ * @brief Configures the HC-05 Bluetooth module with name, baud rate, and password.
+ */
 void configureBluetooth() {
 
   Serial.println(F("Attempting to Configure Bluetooth (HC-05 Module)"));
@@ -782,6 +885,10 @@ void configureBluetooth() {
   return;
 }
 
+/**
+ * @brief Checks if the HC-05 Bluetooth module is in AT mode.
+ * @return 1 if in AT mode, 0 otherwise.
+ */
 int atModeCheck() {
   flushSerial();
   SerialA.print(F("AT\r\n"));
@@ -797,12 +904,19 @@ int atModeCheck() {
   }
 }
 
+/**
+ * @brief Flushes the SerialA read buffer.
+ */
 void flushSerial() {  // SerialA.flush() flushes the write buffer, this function manually flushes the read buffer.
   while (SerialA.available()) {
     SerialA.read();
   }
 }
 
+/**
+ * @brief Waits for SerialA to become available or until a timeout is reached.
+ * @param timeOut Timeout in milliseconds.
+ */
 void waitForSerial(int timeOut) {
   unsigned long tempTime = millis() + timeOut;
   while (!SerialA.available() && millis() < tempTime) {

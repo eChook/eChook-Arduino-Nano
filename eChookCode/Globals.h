@@ -27,15 +27,15 @@ float batteryVoltageLower   = 0; // Lower battery voltage in Volts
 float throttleOutput        = 0; // Throttle output in Percentage
 float throttleIn            = 0; // Throttle input in Percentage
 float throttleV             = 0; // Throttle ADC input voltage
-float current               = 0;
-float motorRPM              = 0;
-float wheelRPM              = 0;
-float wheelSpeed            = 0;
-float gearRatio             = 0;
-float tempOne               = 0;
-float tempTwo               = 0;
-float tempThree             = 0;
-uint8_t brake               = 0;
+float current               = 0; // Current in Amps
+float motorRPM              = 0; // Motor RPM
+float wheelRPM              = 0; // This is stored globally for use in the Gear Ratio calculation
+float wheelSpeed            = 0; // Wheel speed in m/s
+float gearRatio             = 0; // Calculated Gear Ratio
+float tempOne               = 0; // Temperature 1 in *C
+float tempTwo               = 0; // Temperature 2 in *C
+float tempThree             = 0; // Internal Temperature in *C
+uint8_t brake               = 0; // Brake pressed or not, 0 = not pressed, 1 = pressed
 
 // Loop counter used for longer interval functions
 

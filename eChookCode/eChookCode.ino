@@ -1,6 +1,6 @@
 // ===============================================
 // eChook Telemetry Board Code
-// Target: ATMega 328, Arduino Nano, Arduino Nano Every.
+// Target: Arduino Nano (ATMega 328) OR Arduino Nano Every.
 //
 // Authors: ROWAN GRIFFIN, IAN COOPER
 // Lisence: MIT
@@ -8,7 +8,7 @@
 // Documentation: docs.eChook.uk
 // ===============================================
 
-const float CODE_VERSION = 2.03;
+const float CODE_VERSION = 2.05; // The version of the code running on the board. This is used to check compatibility with the online configuration editor.
 
 // Includes
 #include <math.h>
@@ -27,12 +27,19 @@ HardwareSerial &SerialA = Serial1;
 HardwareSerial &SerialA = Serial;
 #endif
 
-// Option Flags for PCB V2 SMD (Preassembled kit)
-// ---------------------------------------
-// Cutting the left hand link and bridging the centre pad to the right pad on JP1 *AND* JP2 reroutes the temperature sensors
-// to Arduino pins A1 and A6, freeing up pins A4 and A5 to be used as I2C SDA(A4) and SCL(A5) on the expansion header.
+/* Option Flags for PCB V2 SMD (Preassembled kit)
+ * ---------------------------------------
+ * Cutting the left hand link and bridging the centre pad to the right pad on JP1 *AND* JP2 reroutes the temperature sensors
+ * to Arduino pins A1 and A6, freeing up pins A4 and A5 to be used as I2C SDA(A4) and SCL(A5) on the expansion header.
+ * Default state is commented out.
+ */
 // #define JUMPER_I2C
-// Bridging JP3 enables automatic HC-05 programming using pin D4. Leaving it unbridged allows use of D4 on the expansion header.
+
+/* On PCB V2.x if JP3 is bridged (Default) it enables automatic HC-05 programming using pin D4. 
+ * JP3 can be cut to allow use of D4 on the expansion header - in which case comment out JUMPER_BT_EN below.
+ * Default state for PCB V2.x is uncommented 
+ * Default state for PCB V1.x is commented out.
+ */
 #define JUMPER_BT_EN
 // ---------------------------------------
 

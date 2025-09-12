@@ -54,6 +54,9 @@
 // Code:
 #include <EEPROM.h>
 
+#define EEPROM_USED_SIZE 125 // Total bytes used for config, floats, BT name, etc.
+#define CHECKSUM_BYTE 0      // Store checksum in EEPROM[0]
+
 // Calibration Bit Definitions:
 // Reading bits in bytes requires some binary logic
 
@@ -97,7 +100,10 @@
 
 // Functions
 
-// EEPROM Setup:
+/**
+ * @brief Sets up EEPROM by checking validity and loading or saving calibration data.
+ * If EEPROM is valid, loads calibration; otherwise, writes default calibration.
+ */
 void EEPROMSetup()
 {
 
@@ -121,6 +127,10 @@ void EEPROMSetup()
     }
 }
 
+/**
+ * @brief Saves current calibration and settings to EEPROM.
+ * Sets binary calibration, float values, Bluetooth name, and writes checksum.
+ */
 void saveCurrCalToEeprom()
 {
 
@@ -160,8 +170,13 @@ void saveCurrCalToEeprom()
     setFloatCal(INDEX_INTERNAL_REFERENCE_VOLTAGE, (float)CAL_INTERNAL_REFERENCE_VOLTAGE);
 
     writeBTName();
+    writeEEPROMChecksum();
 }
 
+/**
+ * @brief Loads calibration and settings from EEPROM into global variables.
+ * Reads binary calibration, float values, and Bluetooth name.
+ */
 void loadEepromCalibration()
 {
 
@@ -199,6 +214,12 @@ void loadEepromCalibration()
     getBTName();
 }
 
+/**
+ * @brief Reads a specific bit from a calibration byte in EEPROM.
+ * @param byte The EEPROM address of the calibration byte.
+ * @param bit The bit mask to isolate the desired bit.
+ * @return 1 if the bit is set, 0 otherwise.
+ */
 uint8_t readBinaryCal(char byte, char bit)
 {
     char temp = EEPROM.read(byte);
@@ -206,12 +227,22 @@ uint8_t readBinaryCal(char byte, char bit)
     return temp ? 1 : 0; // This can now be treated as a binary HIGH / LOW, as all the bits we aren't interesting are LOW. Simplified to 1 or 0 for return.
 }
 
+/**
+ * @brief Reads a full calibration byte from EEPROM.
+ * @param byte The EEPROM address of the calibration byte.
+ * @return The value of the calibration byte.
+ */
 byte getBinaryCalByte(char byte)
 {
     char temp = EEPROM.read(byte);
     return temp; // This can now be treated as a binary HIGH / LOW, as all the bits we aren't interesting are LOW. Simplified to 1 or 0 for return.
 }
 
+/**
+ * @brief Sets a specific bit in a calibration byte in EEPROM.
+ * @param byte The EEPROM address of the calibration byte.
+ * @param bit The bit mask to set.
+ */
 void setBinaryCal(char byte, char bit)
 {
     char temp = EEPROM.read(byte);
@@ -219,6 +250,12 @@ void setBinaryCal(char byte, char bit)
     EEPROM.write(byte, temp);
 }
 
+/**
+ * @brief Sets or clears a specific bit in a calibration byte in EEPROM.
+ * @param byte The EEPROM address of the calibration byte.
+ * @param bit The bit mask to set or clear.
+ * @param value If nonzero, sets the bit; if zero, clears the bit.
+ */
 void setBinaryCal(char byte, char bit, uint8_t value)
 {
     char temp = EEPROM.read(byte);
@@ -233,6 +270,11 @@ void setBinaryCal(char byte, char bit, uint8_t value)
     EEPROM.write(byte, temp);
 }
 
+/**
+ * @brief Clears a specific bit in a calibration byte in EEPROM.
+ * @param byte The EEPROM address of the calibration byte.
+ * @param bit The bit mask to clear.
+ */
 void clearBinaryCal(char byte, char bit)
 {
     char temp = EEPROM.read(byte);
@@ -240,12 +282,22 @@ void clearBinaryCal(char byte, char bit)
     EEPROM.write(byte, temp);
 }
 
+/**
+ * @brief Writes a float value to EEPROM at the specified index.
+ * @param index The index in the float array.
+ * @param value The float value to write.
+ */
 void setFloatCal(uint8_t index, float value)
 {
     uint8_t address = FLOAT_ARRAY_START + (index * 4);
     EEPROM.put(address, value);
 }
 
+/**
+ * @brief Reads a float value from EEPROM at the specified index.
+ * @param index The index in the float array.
+ * @return The float value read from EEPROM.
+ */
 float getFloatCal(uint8_t index)
 {
     float temp = 0;                                  // Pre define float to write to
@@ -254,6 +306,11 @@ float getFloatCal(uint8_t index)
     return temp;
 }
 
+/**
+ * @brief Reads a byte from the float array in EEPROM at the specified index.
+ * @param index The byte index in the float array.
+ * @return The byte value read from EEPROM.
+ */
 byte getFloatByte(uint8_t index)
 {
     byte temp = 0;                               // Pre define float to write to
@@ -262,6 +319,11 @@ byte getFloatByte(uint8_t index)
     return temp;
 }
 
+/**
+ * @brief Reads a byte from the Bluetooth name array in EEPROM at the specified index.
+ * @param index The byte index in the name array.
+ * @return The byte value read from EEPROM.
+ */
 byte getNameByte(uint8_t index)
 {
     byte temp = 0;                              // Pre define float to write to
@@ -270,22 +332,39 @@ byte getNameByte(uint8_t index)
     return temp;
 }
 
+/**
+ * @brief Checks if the verification byte in EEPROM is set to 0xAA.
+ * @return 1 if verification byte is 0xAA, 0 otherwise.
+ */
 uint8_t getVerificationByte()
 {
     byte temp = EEPROM.read(0);
     return temp == 0xAA;
 }
 
+/**
+ * @brief Sets the verification byte in EEPROM to 0xAA.
+ */
 void setVerificationByte()
 {
     EEPROM.write(0, 0xAA);
 }
 
+/**
+ * @brief Clears the verification byte in EEPROM (sets to 0xFF).
+ */
 void clearVerificationByte()
 {
     EEPROM.write(0, 0xFF);
 }
 
+/**
+ * @brief Writes the Bluetooth device name to EEPROM.
+ *
+ * Converts the CAL_BT_NAME String to a char buffer (max 30 bytes) and writes it to EEPROM
+ * starting at NAME_ARRAY_START. Any unused bytes in the buffer are set to 0xff.
+ * This overwrites any previous Bluetooth name stored in EEPROM.
+ */
 void writeBTName()
 {
     // Overwrite any previous data:
@@ -301,6 +380,13 @@ void writeBTName()
     EEPROM.put(NAME_ARRAY_START, buff);
 }
 
+/**
+ * @brief Reads the Bluetooth device name from EEPROM and stores it in CAL_BT_NAME.
+ * 
+ * Reads up to 30 bytes from EEPROM starting at NAME_ARRAY_START. 
+ * Ignores bytes with value 0xff (unused/empty).
+ * Concatenates valid characters into a String and assigns it to CAL_BT_NAME.
+ */
 void getBTName()
 {
     String temp = "";
@@ -311,4 +397,35 @@ void getBTName()
             temp += tmpChar;
     }
     CAL_BT_NAME = temp;
+}
+
+/**
+ * @brief Calculates a very simple 8-bit checksum (sum of all bytes) over EEPROM data.
+ * Excludes the checksum byte itself (EEPROM[0]).
+ * @return The calculated checksum.
+ */
+uint8_t calculateEEPROMChecksum() {
+    uint8_t checksum = 0;
+    for (uint8_t i = 1; i < EEPROM_USED_SIZE; i++) { // Start from 1, skip checksum byte
+        checksum += EEPROM.read(i);
+    }
+    return checksum;
+}
+
+/**
+ * @brief Writes the checksum to EEPROM[0].
+ */
+void writeEEPROMChecksum() {
+    uint8_t checksum = calculateEEPROMChecksum();
+    EEPROM.write(CHECKSUM_BYTE, checksum);
+}
+
+/**
+ * @brief Verifies the EEPROM checksum.
+ * @return true if checksum matches, false otherwise.
+ */
+bool verifyEEPROMChecksum() {
+    uint8_t stored = EEPROM.read(CHECKSUM_BYTE);
+    uint8_t calculated = calculateEEPROMChecksum();
+    return stored == calculated;
 }

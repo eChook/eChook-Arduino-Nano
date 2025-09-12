@@ -72,6 +72,13 @@ float currentSmoothingArray[currentSmoothingSetting];
 uint8_t currentSmoothingCount = 0;
 
 
+//Speed Smoothing Variables:
+
+const uint8_t speedSmoothingSetting = 3; //speed is sampled every 1s, therefore 3 makes 3 seconds of smoothing
+float speedSmoothingArray[speedSmoothingSetting];
+uint8_t speedSmoothingCount = 0;
+
+
 // ISR Wheel and Motor Speed Variables
 volatile unsigned long lastMotorPollTime = 0;
 volatile unsigned long lastMotorInterval = 0;

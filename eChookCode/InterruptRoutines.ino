@@ -1,43 +1,39 @@
-// INTERRUPT SERVICE ROUTINES
-// This function is triggered every time the magnet on the motor shaft passes the Hall effect
-// sensor. Care must be taken to ensure the sensor is position the correct way and so is the
-// magnet as it will only respond in a specific orientation and magnet pole.
-// It is best practice to keep ISRs as small as possible.
+/**
+ * @file InterruptRoutines.ino
+ * @brief Interrupt Service Routines (ISRs) for pulse counting.
+ *
+ * These functions handle low-level pulse counting for motor and wheel sensors.
+ * best practice is kept by keeping these routines as short as possible.
+ */
 
-/*
-
-*/
-void motorSpeedISR()
-{
-  if (CAL_USE_IMPROVED_RPM_CALCULATION)
+/**
+ * @brief ISR for motor speed hall effect sensor.
+ * Triggered on rising edge of pulses from the motor shaft.
+ * Includes a 2ms software debounce (max 30k RPM).
+ */
+void motorSpeedISR() {
+  unsigned long now = micros();
+  unsigned long interval = now - lastMotorPollTime;
+  if (interval > 2000) // Debounce 2ms (Max 30k RPM)
   {
-    unsigned long intervalTemp = micros() - lastMotorPollTime;
-    if (intervalTemp > 2000)
-    { // under 20ms, assume bounce/noise
-      lastMotorInterval = intervalTemp;
-      lastMotorPollTime = micros();
-    }
-  }
-  else
-  {
-    motorPoll++;
+    lastMotorInterval = interval;
+    lastMotorPollTime = now;
+    newMotorSignal = true;
   }
 }
 
-
-void wheelSpeedISR()
-{
-  if (CAL_USE_IMPROVED_SPEED_CALCULATION)
+/**
+ * @brief ISR for wheel speed sensor.
+ * Triggered on rising edge of pulses from the wheel hub/sprocket magnets.
+ * Includes a 10ms software debounce (max 100 RPS).
+ */
+void wheelSpeedISR() {
+  unsigned long now = micros();
+  unsigned long interval = now - lastWheelPollTime;
+  if (interval > 10000) // Debounce 10ms (Max 100 RPS / 6000 RPM approx)
   {
-    unsigned long intervalTemp = millis() - lastWheelPollTime;
-    if (intervalTemp > 20)
-    { // under 20ms, assume bounce/noise
-      lastWheelInterval = intervalTemp;
-      lastWheelPollTime = millis();
-    }
-  }
-  else
-  {
-    wheelPoll++;
+    lastWheelInterval = interval;
+    lastWheelPollTime = now;
+    newSpeedSignal = true;
   }
 }

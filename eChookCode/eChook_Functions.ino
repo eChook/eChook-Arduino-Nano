@@ -1,13 +1,24 @@
 /**
+ * @file eChook_Functions.ino
+ * @brief Core measurement and logic functions for the eChook board.
+ *
+ * This file contains functions for reading sensors, calculating derived values,
+ * and managing data transmission logic.
+ */
+
+/**
  * @brief Performs all setup routines for the eChook board.
- * Initializes pins, debounces, serial communication, Bluetooth, EEPROM, and reference voltage.
+ *
+ * Initializes pins, debounces, serial communication, Bluetooth, EEPROM, and
+ * reference voltage.
  */
 void eChookSetup() {
-  pinSetup();  // Sets Input/Output for all pins. Function found in eChook_Functions.ino.
+  pinSetup(); // Sets Input/Output for all pins. Function found in
+              // eChook_Functions.ino.
 
   // Initialise debounce objects for the three buttons
   cycleButtonDebounce.attach(CYCLE_BTN_IN_PIN);
-  cycleButtonDebounce.interval(50);  // 50ms
+  cycleButtonDebounce.interval(50); // 50ms
 
   launchButtonDebounce.attach(LAUNCH_BTN_IN_PIN);
   launchButtonDebounce.interval(50);
@@ -17,37 +28,38 @@ void eChookSetup() {
 
   /**
    * Initialise Serial Communication
-   * If communication over bluetooth is not working or the results are garbled it is likely the
-   * baud rate set here (number in brackets after SerialA.begin) and the baud rate of the bluetooth
-   * module aren't set the same.
+   * If communication over bluetooth is not working or the results are garbled
+   * it is likely the baud rate set here (number in brackets after
+   * SerialA.begin) and the baud rate of the bluetooth module aren't set the
+   * same.
    *
    * A good tutorial for altering the HC-05 Bluetooth Module parameters is here:
    * http://www.instructables.com/id/Modify-The-HC-05-Bluetooth-Module-Defaults-Using-A/
    *
    * The HC-05 modules commonly come preset with baud rates of 9600 or 32000
    *
-   * Alternatively configureBluetooth function will attempt to automatically configure a
-   * HC-05 module if it is plugged in. A PCB V2 Board will do this fully automatically, a 
-   * V1.x board requires manually setting AT mode - Power Arduino, unplug HC-05 module, 
-   * press button on HC-05 module, plug back in holding button [light should blink slowly],
-   * release button, then reset Arduino)
+   * Alternatively configureBluetooth function will attempt to automatically
+   * configure a HC-05 module if it is plugged in. A PCB V2 Board will do this
+   * fully automatically, a V1.x board requires manually setting AT mode - Power
+   * Arduino, unplug HC-05 module, press button on HC-05 module, plug back in
+   * holding button [light should blink slowly], release button, then reset
+   * Arduino)
    */
 
-
 #ifdef NANO_EVERY
-  // Starts USB Serial as well on Arduino Nano Every at the same baud rate as set for Bluetooth
+  // Starts USB Serial as well on Arduino Nano Every at the same baud rate as
+  // set for Bluetooth
   Serial.begin(CAL_BT_BAUDRATE);
   Serial.println(("\n\n\neChook Nano Starting Setup"));
   Serial.print(("Firmware Version: "));
   Serial.println(CODE_VERSION);
 #endif
 
-  configureBluetooth();  // Checks if If AT mode is set and configures HC-05 according to the BT_xxx constants defined above
+  configureBluetooth(); // Checks if If AT mode is set and configures HC-05
+                        // according to the BT_xxx constants defined above
 
-
-  SerialA.begin(CAL_BT_BAUDRATE);  // Nano Clone - Bluetooth and USB communications, Nano Every - BT Only.
-
-
+  SerialA.begin(CAL_BT_BAUDRATE); // Nano Clone - Bluetooth and USB
+                                  // communications, Nano Every - BT Only.
 
   // Read in calibration from EEPROM memory if required
   EEPROMSetup();
@@ -73,7 +85,7 @@ void pinSetup() {
 
   // Set up pin modes for all inputs and outputs
   pinMode(MOTOR_OUT_PIN, OUTPUT);
-  digitalWrite(MOTOR_OUT_PIN, LOW);  // Ensure motor is not driven on startup
+  digitalWrite(MOTOR_OUT_PIN, LOW); // Ensure motor is not driven on startup
 
   pinMode(VBATT_IN_PIN, INPUT);
   pinMode(VBATT1_IN_PIN, INPUT);
@@ -84,20 +96,24 @@ void pinSetup() {
 
   pinMode(LAUNCH_BTN_IN_PIN, INPUT_PULLUP);
   pinMode(CYCLE_BTN_IN_PIN, INPUT_PULLUP);
-  pinMode(BRAKE_IN_PIN, INPUT_PULLUP);  // input type will depend on implementation of brake light
+  pinMode(
+      BRAKE_IN_PIN,
+      INPUT_PULLUP); // input type will depend on implementation of brake light
 
 #ifdef JUMPER_BT_EN
   pinMode(BT_EN_PIN, OUTPUT);
   digitalWrite(BT_EN_PIN, HIGH);
 #endif
 
-
   /**
-   * Set up Interrupts:
-   * When the specified digital change is seen on a the interrupt pin it will pause the main loop and
-   * run the code in the Interrupt Service Routine (ISR) before resuming the main code.
-   * The interrupt number is not the pin number on the arduino Nano. For explanation see here:
-   * https://www.arduino.cc/en/Reference/AttachInterrupt
+   * @brief Set up Interrupts.
+   *
+   * When the specified digital change is seen on the interrupt pin, it will
+   * pause the main loop and run the Interrupt Service Routine (ISR).
+   *
+   * @see motorSpeedISR
+   * @see wheelSpeedISR
+   * @see https://www.arduino.cc/en/Reference/AttachInterrupt
    */
 
 #ifdef NANO_EVERY
@@ -111,31 +127,47 @@ void pinSetup() {
 
 /**
  * @brief Updates sensor readings and sends data at defined intervals.
- * Handles periodic updates for throttle, voltage, current, temperature, speed, and gear ratio.
+ * Handles periodic updates for throttle, voltage, current, temperature, speed,
+ * and gear ratio.
  */
 void eChookRoutinesUpdate() {
 
-  // We want to check different variables at different rates. For most variables 0.25 seconds will be good for logging and analysis.
-  // Certain variables either can't have or do not need this resolution.
-  // Wheel and Motor speed are accumulated over time, so the longer time left between samples, the higher the resolution of the value.
-  // As such, these are only updated ever 1 second. Temperature is a reading that will not change fast, and consumes more processing
-  // time to calculate than most, so this is also checked every 1s.
+  // We want to check different variables at different rates. For most variables
+  // 0.25 seconds will be good for logging and analysis. Certain variables
+  // either can't have or do not need this resolution. Wheel and Motor speed are
+  // accumulated over time, so the longer time left between samples, the higher
+  // the resolution of the value. As such, these are only updated ever 1 second.
+  // Temperature is a reading that will not change fast, and consumes more
+  // processing time to calculate than most, so this is also checked every 1s.
 
   SerialCheck();
 
   static unsigned long nextThrottleReadMs = millis();
-  if (millis() > nextThrottleReadMs) {  // millis() gives milliseconds since power on. If this is greater than the nextThrottleReadMs we've calculated it will run.
-    nextThrottleReadMs += 100;          // 100 ms, 10hz
-    throttleOutput = readThrottle();    // if this is being used as the input to a motor controller it is recommended to check it at a higher frequency than 4Hz
+  if (millis() >
+      nextThrottleReadMs) { // millis() gives milliseconds since power on. If
+                            // this is greater than the nextThrottleReadMs we've
+                            // calculated it will run.
+    nextThrottleReadMs += 100;       // 100 ms, 10hz
+    throttleOutput = readThrottle(); // if this is being used as the input to a
+                                     // motor controller it is recommended to
+                                     // check it at a higher frequency than 4Hz
   }
 
-  static unsigned long lastShortDataSendTime = millis();              // this is reset at the start so that the calculation time does not add to the loop time
-  if (millis() - lastShortDataSendTime > CAL_DATA_TRANSMIT_INTERVAL)  // i.e. if 250ms have passed since this code last ran
+  static unsigned long lastShortDataSendTime =
+      millis(); // this is reset at the start so that the calculation time does
+                // not add to the loop time
+  if (millis() - lastShortDataSendTime >
+      CAL_DATA_TRANSMIT_INTERVAL) // i.e. if 250ms have passed since this code
+                                  // last ran
   {
     lastShortDataSendTime = millis();
     static unsigned int loopCounter = 0;
-    loopCounter = loopCounter + 1;  // This value will loop 1-4, the 1s update variables will update on certain loops to spread the processing time.
-    // It is recommended to leave the ADC a short recovery period between readings (~1ms). To achieve this we can transmit the data between readings
+    loopCounter = loopCounter +
+                  1; // This value will loop 1-4, the 1s update variables will
+                     // update on certain loops to spread the processing time.
+    // It is recommended to leave the ADC a short recovery period between
+    // readings (~1ms). To achieve this we can transmit the data between
+    // readings
     batteryVoltageTotal = readVoltageTotal();
     sendData(VOLTAGE_ID, batteryVoltageTotal);
 
@@ -158,25 +190,26 @@ void eChookRoutinesUpdate() {
     referenceVoltage = updateReferenceVoltage();
     sendData(REF_VOLTAGE_ID, referenceVoltage);
 
-    if (loopCounter == 1) {  // Functions to run every 1st loop
+    if (loopCounter == 1) { // Functions to run every 1st loop
       tempOne = readTempOne();
       sendData(TEMP1_ID, tempOne);
-      digitalWrite(13, HIGH);  // these are just flashing the LEDs as visual confimarion of the loop
+      digitalWrite(13, HIGH); // these are just flashing the LEDs as visual
+                              // confimarion of the loop
     }
 
-    if (loopCounter == 2) {  // Functions to run every 2nd loop
+    if (loopCounter == 2) { // Functions to run every 2nd loop
       tempTwo = readTempTwo();
       sendData(TEMP2_ID, tempTwo);
     }
 
-    if (loopCounter == 3) {  // Functions to run every 3rd loop
+    if (loopCounter == 3) { // Functions to run every 3rd loop
       tempThree = readTempInternal();
       sendData(TEMP3_ID, tempThree);
       digitalWrite(13, LOW);
     }
 
-    if (loopCounter == 4) {  // Functions to run every 4th loop
-      loopCounter = 0;       // 4 * 0.25 makes one second, so counter resets
+    if (loopCounter == 4) { // Functions to run every 4th loop
+      loopCounter = 0;      // 4 * 0.25 makes one second, so counter resets
       gearRatio = calculateGearRatio();
       sendData(GEAR_RATIO_ID, gearRatio);
     }
@@ -184,55 +217,69 @@ void eChookRoutinesUpdate() {
 }
 
 /**
- * @brief Checks the state of each button and sends updates over Bluetooth if pressed.
+ * @brief Checks the state of each button and sends updates over Bluetooth if
+ * pressed.
  */
-void buttonChecks() {  // Checks state of each button, if a press is detected sends the data over bluetooth
+void buttonChecks() {
   cycleButtonDebounce.update();
   launchButtonDebounce.update();
   brakeButtonDebounce.update();
-  static unsigned int cycleButtonPrevious = LOW;                // Track state so that a button press can be detected
-  unsigned int cycleButtonState = !cycleButtonDebounce.read();  // Buttons are LOW when pressed, ! inverts this, so state is HIGH when pressed
-  if (cycleButtonState != cycleButtonPrevious)                  // Button has changed state - either pressed or depressed
+  static unsigned int cycleButtonPrevious =
+      LOW; // Track state so that a button press can be detected
+  unsigned int cycleButtonState =
+      !cycleButtonDebounce.read(); // Buttons are LOW when pressed, ! inverts
+                                   // this, so state is HIGH when pressed
+  if (cycleButtonState != cycleButtonPrevious) // Button has changed state -
+                                               // either pressed or depressed
   {
-    if (cycleButtonState == HIGH)  // Button Pressed
+    if (cycleButtonState == HIGH) // Button Pressed
     {
       sendData(CYCLE_VIEW_ID, 1);
     } else {
       sendData(CYCLE_VIEW_ID, 0);
     }
-    cycleButtonPrevious = cycleButtonState;  // Update previous state
+    cycleButtonPrevious = cycleButtonState; // Update previous state
   }
 
-  static unsigned int launchButtonPrevious = LOW;                 // Track state so that a button press can be detected
-  unsigned int launchButtonState = !launchButtonDebounce.read();  // Buttons are LOW when pressed, ! inverts this, so state is HIGH when pressed
-  if (launchButtonState != launchButtonPrevious)                  // Button has changed state - either pressed or depressed
+  static unsigned int launchButtonPrevious =
+      LOW; // Track state so that a button press can be detected
+  unsigned int launchButtonState =
+      !launchButtonDebounce.read(); // Buttons are LOW when pressed, ! inverts
+                                    // this, so state is HIGH when pressed
+  if (launchButtonState != launchButtonPrevious) // Button has changed state -
+                                                 // either pressed or depressed
   {
-    if (launchButtonState == HIGH)  // Button Pressed
+    if (launchButtonState == HIGH) // Button Pressed
     {
       sendData(LAUNCH_MODE_ID, 1);
     } else {
       sendData(LAUNCH_MODE_ID, 0);
     }
-    launchButtonPrevious = launchButtonState;  // Update previous state
+    launchButtonPrevious = launchButtonState; // Update previous state
   }
 
-  static unsigned int brakeButtonPrevious = LOW;                // Track state so that a button press can be detected
-  unsigned int brakeButtonState = !brakeButtonDebounce.read();  // Buttons are LOW when pressed, ! inverts this, so state is HIGH when pressed
-  if (brakeButtonState != brakeButtonPrevious)                  // Button has changed state - either pressed or depressed
+  static unsigned int brakeButtonPrevious =
+      LOW; // Track state so that a button press can be detected
+  unsigned int brakeButtonState =
+      !brakeButtonDebounce.read(); // Buttons are LOW when pressed, ! inverts
+                                   // this, so state is HIGH when pressed
+  if (brakeButtonState != brakeButtonPrevious) // Button has changed state -
+                                               // either pressed or depressed
   {
-    if (brakeButtonState == HIGH)  // Button Pressed
+    if (brakeButtonState == HIGH) // Button Pressed
     {
       sendData(BRAKE_PRESSED_ID, 100);
-    } else if (brakeButtonState == LOW)  // Button Released
+    } else if (brakeButtonState == LOW) // Button Released
     {
       sendData(BRAKE_PRESSED_ID, 0);
     }
-    brakeButtonPrevious = brakeButtonState;  // Update previous state
+    brakeButtonPrevious = brakeButtonState; // Update previous state
   }
 }
 
 /**
- * @brief Updates and returns the reference voltage for ADC calculations. Only works on ATMEGA328 based boards.
+ * @brief Updates and returns the reference voltage for ADC calculations. Only
+ * works on ATMEGA328 based boards.
  * @return The calculated reference voltage.
  */
 float updateReferenceVoltage() {
@@ -240,27 +287,33 @@ float updateReferenceVoltage() {
   // TODO - implement properly for Arduino Nano Every
   return CAL_REFERENCE_VOLTAGE;
 #else
-  // This section of code is exclusive to the ATMEGA328 chip based Arduino Nano Boards.
+  // This section of code is exclusive to the ATMEGA328 chip based Arduino Nano
+  // Boards.
 
-  // This function uses the internal 1v1 reference to back calucalate the 5V rail voltage.
-  // It measures the stable reference voltage, using the 5V rail as the ADC reference, then
-  // uses the result to calculate an accurate value for the 5V ADC reference.
+  // This function uses the internal 1v1 reference to back calucalate the 5V
+  // rail voltage. It measures the stable reference voltage, using the 5V rail
+  // as the ADC reference, then uses the result to calculate an accurate value
+  // for the 5V ADC reference.
 
   // Set the analog reference to DEFAULT (AVcc == Vcc power rail)
   // REFS1 REFS0          --> 0b01   -Selects DEFAULT (AVcc) reference
-  // Set the analog input to channel 14: the INTERNAL bandgap reference (1.1V +/- 10%)
-  // MUX3 MUX2 MUX1 MUX0  --> 0b1110 -Selects channel 14, bandgap voltage, to measure
-  ADMUX = (0 << REFS1) | (1 << REFS0) | (0 << ADLAR) | (1 << MUX3) | (1 << MUX2) | (1 << MUX1) | (0 << MUX0);
+  // Set the analog input to channel 14: the INTERNAL bandgap reference (1.1V
+  // +/- 10%) MUX3 MUX2 MUX1 MUX0  --> 0b1110 -Selects channel 14, bandgap
+  // voltage, to measure
+  ADMUX = (0 << REFS1) | (1 << REFS0) | (0 << ADLAR) | (1 << MUX3) |
+          (1 << MUX2) | (1 << MUX1) | (0 << MUX0);
 
-  delay(2);  // Let mux settle a little to get a more stable A/D conversion
+  delay(2); // Let mux settle a little to get a more stable A/D conversion
 
-  // Start a conversion to measure the INTERNAL reference relative to the DEFAULT (Vcc) reference.
+  // Start a conversion to measure the INTERNAL reference relative to the
+  // DEFAULT (Vcc) reference.
   ADCSRA |= _BV(ADSC);
   // Wait for it to complete
   while (ADCSRA & (1 << ADSC)) {
   };
 
-  // Calculate the power rail voltage (reference voltage) relative to the known voltage
+  // Calculate the power rail voltage (reference voltage) relative to the known
+  // voltage
   return (float)((CAL_INTERNAL_REFERENCE_VOLTAGE * 1024UL) / ADC);
 
 #endif
@@ -270,10 +323,18 @@ float updateReferenceVoltage() {
  * @brief Reads and calculates the total battery voltage.
  * @return The total battery voltage in volts.
  */
-float readVoltageTotal() {                                // Reads in the ADC value for the 24v input, converts it to a voltage, returns the voltage value.
-  float tempVoltage = analogRead(VBATT_IN_PIN);           // this will give a 10 bit value of the voltage with 1024 representing the ADC reference voltage of 5V
-  tempVoltage = (tempVoltage / 1024) * referenceVoltage;  // This gives the actual voltage seen at the arduino pin, assuming reference voltage of 5v
-  tempVoltage = tempVoltage * CAL_BATTERY_TOTAL;          // Gives battery voltage where 6 is the division ratio of the potential divider. NEEDS TUNING!!
+float readVoltageTotal() {
+  float tempVoltage = analogRead(
+      VBATT_IN_PIN); // this will give a 10 bit value of the voltage with 1024
+                     // representing the ADC reference voltage of 5V
+  tempVoltage =
+      (tempVoltage / 1024) *
+      referenceVoltage; // This gives the actual voltage seen at the arduino
+                        // pin, assuming reference voltage of 5v
+  tempVoltage =
+      tempVoltage *
+      CAL_BATTERY_TOTAL; // Gives battery voltage where 6 is the division ratio
+                         // of the potential divider. NEEDS TUNING!!
   return (tempVoltage);
 }
 
@@ -281,10 +342,18 @@ float readVoltageTotal() {                                // Reads in the ADC va
  * @brief Reads and calculates the lower battery voltage.
  * @return The lower battery voltage in volts.
  */
-float readVoltageLower() {                                // Reads in the ADC value for the 12v input, converts it to a voltage, returns the voltage value.
-  float tempVoltage = analogRead(VBATT1_IN_PIN);          // this will give a 10 bit value of the voltage with 1024 representing the ADC reference voltage of 5V
-  tempVoltage = (tempVoltage / 1024) * referenceVoltage;  // This gives the actual voltage seen at the arduino pin, assuming reference voltage of 5v
-  tempVoltage = tempVoltage * CAL_BATTERY_LOWER;          // Gives battery voltage where 3 is the division ratio of the potential divider. NEEDS TUNING!!
+float readVoltageLower() {
+  float tempVoltage = analogRead(
+      VBATT1_IN_PIN); // this will give a 10 bit value of the voltage with 1024
+                      // representing the ADC reference voltage of 5V
+  tempVoltage =
+      (tempVoltage / 1024) *
+      referenceVoltage; // This gives the actual voltage seen at the arduino
+                        // pin, assuming reference voltage of 5v
+  tempVoltage =
+      tempVoltage *
+      CAL_BATTERY_LOWER; // Gives battery voltage where 3 is the division ratio
+                         // of the potential divider. NEEDS TUNING!!
   return (tempVoltage);
 }
 
@@ -292,23 +361,31 @@ float readVoltageLower() {                                // Reads in the ADC va
  * @brief Reads, smooths, and calculates the Current value.
  * @return The Current in amps.
  */
-float readCurrent() {  // Reads in ACC input from the differential amplifier, converts it to the current value and smooths it
+float readCurrent() {
   float tempCurrent = analogRead(AMPS_IN_PIN);
-  tempCurrent = (tempCurrent / 1024) * referenceVoltage;       // gives voltage output of current sensor.
-  tempCurrent = tempCurrent * CAL_CURRENT;                     // calibration value for LEM current sensor on eChook board.
-  currentSmoothingArray[currentSmoothingCount] = tempCurrent;  // updates array with latest value
+  tempCurrent = (tempCurrent / 1024) *
+                referenceVoltage; // gives voltage output of current sensor.
+  tempCurrent =
+      tempCurrent *
+      CAL_CURRENT; // calibration value for LEM current sensor on eChook board.
+  currentSmoothingArray[currentSmoothingCount] =
+      tempCurrent; // updates array with latest value
   // The next 5 lines manage the smoothing count for the averaging:
-  currentSmoothingCount++;  // increment smoothing count
+  currentSmoothingCount++; // increment smoothing count
   if (currentSmoothingCount >= currentSmoothingSetting) {
-    currentSmoothingCount = 0;  // if current smoothing count is higher than max, reset to 0
+    currentSmoothingCount =
+        0; // if current smoothing count is higher than max, reset to 0
   }
   // Now back to the current calculations:
-  tempCurrent = 0;  // reset temp current to receive sum of array values
+  tempCurrent = 0; // reset temp current to receive sum of array values
   for (int i = 0; i < currentSmoothingSetting; i++) {
-    tempCurrent += currentSmoothingArray[i];  // sum all values in the current smoothing array
+    tempCurrent += currentSmoothingArray[i]; // sum all values in the current
+                                             // smoothing array
   }
-  tempCurrent = tempCurrent / currentSmoothingSetting;  // divide summed value by number of samples to get mean
-  return (tempCurrent);                                 // return the final smoothed value
+  tempCurrent =
+      tempCurrent / currentSmoothingSetting; // divide summed value by number of
+                                             // samples to get mean
+  return (tempCurrent);                      // return the final smoothed value
 }
 
 /**
@@ -319,42 +396,61 @@ float readThrottle() {
   static int currThrtlOut = 0;
   float tempThrottle = analogRead(THROTTLE_IN_PIN);
 
-  if (CAL_THROTTLE_VARIABLE)  // Analogue throttleOutput, not push button
+  if (CAL_THROTTLE_VARIABLE) // Analogue throttleOutput, not push button
   {
-    tempThrottle = (tempThrottle / 1023) * referenceVoltage;  // Gives the actual voltage seen on the arduino Pin
-    throttleV = tempThrottle;                                 // Update Global variable for throttleOutput in voltage
+    tempThrottle =
+        (tempThrottle / 1023) *
+        referenceVoltage; // Gives the actual voltage seen on the arduino Pin
+    throttleV =
+        tempThrottle; // Update Global variable for throttleOutput in voltage
     // SerialA.print(tempThrottle);
     // SerialA.print(", ");
-    // The following code adds dead bands to the start and end of the throttleOutput travel
-    if (tempThrottle < CAL_THROTTLE_LOW)  // less than 1V
+    // The following code adds dead bands to the start and end of the
+    // throttleOutput travel
+    if (tempThrottle < CAL_THROTTLE_LOW) // less than 1V
     {
       tempThrottle = CAL_THROTTLE_LOW;
-    } else if (tempThrottle > CAL_THROTTLE_HIGH)  // greater than 4 V
+    } else if (tempThrottle > CAL_THROTTLE_HIGH) // greater than 4 V
     {
       tempThrottle = CAL_THROTTLE_HIGH;
     }
 
-    tempThrottle = ((tempThrottle - CAL_THROTTLE_LOW) / (float)(CAL_THROTTLE_HIGH - CAL_THROTTLE_LOW)) * (255);
+    tempThrottle = ((tempThrottle - CAL_THROTTLE_LOW) /
+                    (float)(CAL_THROTTLE_HIGH - CAL_THROTTLE_LOW)) *
+                   (255);
   } else {
-    throttleV = (tempThrottle / 1023) * referenceVoltage;  // Update Global variable for throttleOutput in voltage
-    if (tempThrottle > 200)                                // Approx 1v
+    throttleV =
+        (tempThrottle / 1023) * referenceVoltage; // Update Global variable for
+                                                  // throttleOutput in voltage
+    if (tempThrottle > 200)                       // Approx 1v
     {
-      tempThrottle = 255;  // full throttleOutput
+      tempThrottle = 255; // full throttleOutput
     } else {
-      tempThrottle = 0;  // No throttleOutput
+      tempThrottle = 0; // No throttleOutput
     }
   }
 
-  throttleIn = (float)tempThrottle / 2.55;  // Convert to a float percentage for the output
+  throttleIn = (float)tempThrottle /
+               2.55; // Convert to a float percentage for the output
 
   if (CAL_THROTTLE_RAMP) {
-    // This code generates a simple ramp up in throttleOutput. The >100 is there as it will likely take about 40% throttleOutput to get the car moving, so this will give a quicker start.
-    if (tempThrottle >= currThrtlOut && tempThrottle > 100) {  // This could be if(thrtlIn > thrtlOut && speed < threshold) to make it low speed only. Speed and threshold are undefined in this example!
+    // This code generates a simple ramp up in throttleOutput. The >100 is there
+    // as it will likely take about 40% throttleOutput to get the car moving, so
+    // this will give a quicker start.
+    if (tempThrottle >= currThrtlOut &&
+        tempThrottle > 100) { // This could be if(thrtlIn > thrtlOut && speed <
+                              // threshold) to make it low speed only. Speed and
+                              // threshold are undefined in this example!
       if (currThrtlOut < 100) {
         currThrtlOut = 101;
       }
-      currThrtlOut = currThrtlOut + 4;    // Value dictates ramp speed. Calculated by (155/x)/10. 4 gives (155/4)/10=3.875 seconds, 2 gives 7.75 seconds, 1 gives 15.5 seconds
-      if (currThrtlOut > tempThrottle) {  // Fixes the throttleOutput jitter if the increment puts output over request.
+      currThrtlOut =
+          currThrtlOut + 4; // Value dictates ramp speed. Calculated by
+                            // (155/x)/10. 4 gives (155/4)/10=3.875 seconds, 2
+                            // gives 7.75 seconds, 1 gives 15.5 seconds
+      if (currThrtlOut >
+          tempThrottle) { // Fixes the throttleOutput jitter if the increment
+                          // puts output over request.
         currThrtlOut = tempThrottle;
       }
     } else {
@@ -365,14 +461,17 @@ float readThrottle() {
     currThrtlOut = tempThrottle;
   }
 
-
   if (CAL_THROTTLE_OUTPUT_EN) {
-    analogWrite(MOTOR_OUT_PIN, currThrtlOut);  // This drives the motor output. Unless you are using the board to drive your motor you can comment it out.
+    analogWrite(
+        MOTOR_OUT_PIN,
+        currThrtlOut); // This drives the motor output. Unless you are using the
+                       // board to drive your motor you can comment it out.
   } else {
     analogWrite(MOTOR_OUT_PIN, 0);
   }
 
-  return (float)currThrtlOut / 2.55;  // Convert to a float percentage for the output
+  return (float)currThrtlOut /
+         2.55; // Convert to a float percentage for the output
 }
 
 /**
@@ -380,8 +479,10 @@ float readThrottle() {
  * @return The temperature in Celsius.
  */
 float readTempOne() {
-  float temp = thermistorADCToCelcius(analogRead(TEMP1_IN_PIN), 1);  // use the thermistor function to turn the ADC reading into a temperature
-  return (temp);                                                     // return Temperature.
+  float temp = thermistorADCToCelcius(analogRead(TEMP1_IN_PIN),
+                                      1); // use the thermistor function to turn
+                                          // the ADC reading into a temperature
+  return (temp);                          // return Temperature.
 }
 
 /**
@@ -394,7 +495,8 @@ float readTempTwo() {
 }
 
 // Reading the interanl arduino tempreature - notes
-// on the accuracy and calibration here: https://playground.arduino.cc/Main/InternalTemperatureSensor/
+// on the accuracy and calibration here:
+// https://playground.arduino.cc/Main/InternalTemperatureSensor/
 /**
  * @brief Reads and calculates the internal temperature of the Arduino.
  * @return The internal temperature in Celsius.
@@ -414,10 +516,11 @@ float readTempInternal(void) {
   // Configure ADC for internal temperature sensor
   ADC0.CTRLC = ADC_PRESC_DIV4_gc | ADC_REFSEL_INTREF_gc; // 1.1V reference
   ADC0.MUXPOS = ADC_MUXPOS_TEMPSENSE_gc; // Select temperature sensor
-  ADC0.SAMPCTRL = 0x3F; // Maximum sampling time
+  ADC0.SAMPCTRL = 0x3F;                  // Maximum sampling time
 
   ADC0.COMMAND = ADC_STCONV_bm; // Start conversion
-  while (!(ADC0.INTFLAGS & ADC_RESRDY_bm)); // Wait for result ready
+  while (!(ADC0.INTFLAGS & ADC_RESRDY_bm))
+    ; // Wait for result ready
 
   adc = ADC0.RES; // Read ADC result
 
@@ -432,7 +535,8 @@ float readTempInternal(void) {
   temperature = (float)adc - 300.0f;
   temperature += 25.0f;
 
-  return temperature; // Note: This is an approximate value and may need calibration for accuracy.
+  return temperature; // Note: This is an approximate value and may need
+                      // calibration for accuracy.
 
 #else
   unsigned int wADC;
@@ -443,9 +547,9 @@ float readTempInternal(void) {
   // the analogRead function yet.
   // Set the internal reference and mux.
   ADMUX = (_BV(REFS1) | _BV(REFS0) | _BV(MUX3));
-  ADCSRA |= _BV(ADEN);  // enable the ADC
-  delay(20);            // wait for voltages to become stable.
-  ADCSRA |= _BV(ADSC);  // Start the ADC
+  ADCSRA |= _BV(ADEN); // enable the ADC
+  delay(20);           // wait for voltages to become stable.
+  ADCSRA |= _BV(ADSC); // Start the ADC
   // Detect end-of-conversion
   while (bit_is_set(ADCSRA, ADSC))
     ;
@@ -465,23 +569,44 @@ float readTempInternal(void) {
  * @return The wheel speed in meters per second.
  */
 float readWheelSpeed() {
-  if (CAL_WHEEL_MAGNETS == 0)  // divide by zero protection
-    return (0);
+  if (CAL_WHEEL_MAGNETS == 0)
+    return 0;
 
-  static long nextSpeedUpdateTime = 0;
-  if (newSpeedSignal) {
-    nextSpeedUpdateTime = millis() + 3000;  //3 seconds in the future
-    newSpeedSignal = false;
-    if (lastWheelInterval > 0)  // divide by zero protection
-    {
-      float wheelRPS = 1000000.0 / ((float)(lastWheelInterval * CAL_WHEEL_MAGNETS));
-      return (wheelRPS * CAL_WHEEL_CIRCUMFERENCE);  // meters per second.
-    }
-  } else if (millis() > nextSpeedUpdateTime)  // over 3 seconds since last signal, assume stopped.
-  {
-    return (0);
+  // Timeout logic: if no pulse for 3 seconds, speed is 0
+  unsigned long timeSinceLast =
+      micros() - lastWheelPollTime; // Handle wrap-around automatically
+  if (timeSinceLast > 3000000) {
+    wheelSpeed = 0;
+    // Reset smoothing buffer
+    for (int i = 0; i < smoothingSize; i++)
+      wheelSpeedSmoothing[i] = 0;
+    return 0;
   }
-  return wheelSpeed;  // If no new signal or timeout, return existing global value
+
+  if (newSpeedSignal) {
+    newSpeedSignal = false;
+
+    if (lastWheelInterval > 0) {
+      // Calculate instantaneous Speed in m/s
+      // Interval is in micros.
+      // RPS = 1,000,000 / (interval * magnets)
+      float wheelRPS =
+          1000000.0 / ((float)(lastWheelInterval * CAL_WHEEL_MAGNETS));
+      float instantaneousSpeed = wheelRPS * CAL_WHEEL_CIRCUMFERENCE;
+
+      // Add to smoothing buffer
+      wheelSpeedSmoothing[wheelSmoothingIndex] = instantaneousSpeed;
+      wheelSmoothingIndex = (wheelSmoothingIndex + 1) % smoothingSize;
+
+      // Calculate average
+      float sum = 0;
+      for (int i = 0; i < smoothingSize; i++)
+        sum += wheelSpeedSmoothing[i];
+      wheelSpeed = sum / smoothingSize;
+    }
+  }
+
+  return wheelSpeed;
 }
 
 /**
@@ -489,22 +614,41 @@ float readWheelSpeed() {
  * @return The motor RPM.
  */
 float readMotorRPM() {
-  if (CAL_MOTOR_MAGNETS == 0)  // divide by zero protection
-    return (0);
+  if (CAL_MOTOR_MAGNETS == 0)
+    return 0;
 
-  static long nextMotorUpdateTime = 0;
-  if (newMotorSignal) {
-    nextMotorUpdateTime = millis() + 1000;  //1 seconds in the future
-    newMotorSignal = false;
-    if (lastWheelInterval > 0)  // divide by zero protection
-    {
-      return (1000000.0 / ((float)(lastMotorInterval * CAL_MOTOR_MAGNETS)) * 60);
-    }
-  } else if (millis() > nextMotorUpdateTime)  // over 3 seconds since last signal, assume stopped.
-  {
-    return (0);
+  // Timeout logic: if no pulse for 1 second, RPM is 0
+  unsigned long timeSinceLast = micros() - lastMotorPollTime;
+  if (timeSinceLast > 1000000) {
+    motorRPM = 0;
+    // Reset smoothing buffer
+    for (int i = 0; i < smoothingSize; i++)
+      motorRPMSmoothing[i] = 0;
+    return 0;
   }
-  return motorRPM;  //If no new signal and no time out, return existing global value
+
+  if (newMotorSignal) {
+    newMotorSignal = false;
+
+    if (lastMotorInterval > 0) {
+      // Calculate instantaneous RPM
+      // RPM = (1,000,000 / (interval * magnets)) * 60
+      float instantaneousRPM =
+          (60000000.0 / ((float)(lastMotorInterval * CAL_MOTOR_MAGNETS)));
+
+      // Add to smoothing buffer
+      motorRPMSmoothing[motorSmoothingIndex] = instantaneousRPM;
+      motorSmoothingIndex = (motorSmoothingIndex + 1) % smoothingSize;
+
+      // Calculate average
+      float sum = 0;
+      for (int i = 0; i < smoothingSize; i++)
+        sum += motorRPMSmoothing[i];
+      motorRPM = sum / smoothingSize;
+    }
+  }
+
+  return motorRPM;
 }
 
 /**
@@ -519,30 +663,30 @@ float calculateGearRatio() {
   return (tempGearRatio);
 }
 
-// Thermistor calculation
-// If an active sensor such as a TMP37 is used this has a calibrated voltage output, linear to the temperature change.
-// A cheaper option is to use Thermistors. The resistance across a thrmistor changes with temperature, but the change is not linear
-// so some maths is required to translate the voltage reading into a temperature value.
-// For more information see here: http://playground.arduino.cc/ComponentLib/Thermistor2
-// This method uses the Steinhart-Hart equation to calculate the actual temperature, which requires three coefficients,
-// A, B and C, that are specific to a thermistor. The ones below are for the thermistors provided with the board, however if you
-// use a different thermistor the coefficients should be given in the datasheet, and if not, can be calculated using this calculator:
-// http://www.thinksrs.com/downloads/programs/Therm%20Calc/NTCCalibrator/NTCcalculator.htm
-
 /**
- * @brief Converts a thermistor ADC reading to Celsius using the Steinhart-Hart equation.
+ * @brief Converts a thermistor ADC reading to Celsius using the Steinhart-Hart
+ * equation.
+ *
+ * This method uses the Steinhart-Hart equation to calculate the actual
+ * temperature, which requires three coefficients (A, B and C) specific to the
+ * thermistor.
+ *
  * @param rawADC The raw ADC value from the thermistor pin.
- * @param thermNumber The thermistor number (1 or 2) to select calibration constants.
+ * @param thermNumber The thermistor number (1 or 2) to select calibration
+ * constants.
  * @return The calculated temperature in Celsius.
+ * @see http://playground.arduino.cc/ComponentLib/Thermistor2
  */
 float thermistorADCToCelcius(int rawADC, uint8_t thermNumber) {
 
-  // If no sensor is plugged in, rawADC reading will be close to 1023, so return 0.
+  // If no sensor is plugged in, rawADC reading will be close to 1023, so return
+  // 0.
   if (rawADC > 1000)
     return (0);
 
   // Steinhart-Hart Coefficients, see comment above
-  // These coefficients are for the MF52AT NTC 10k thermistor, however due to thermistor tolerances each thermistor should be calibrated individually.
+  // These coefficients are for the MF52AT NTC 10k thermistor, however due to
+  // thermistor tolerances each thermistor should be calibrated individually.
   float A, B, C;
   if (thermNumber == 1) {
     A = CAL_THERM1_A;
@@ -554,20 +698,29 @@ float thermistorADCToCelcius(int rawADC, uint8_t thermNumber) {
     C = CAL_THERM2_C;
   }
   // Value of resistor forming potential divider with Thermistor in ohms.
-  const int FIXED_RESISTOR_VALUE = 10000;  // 10k
+  const int FIXED_RESISTOR_VALUE = 10000; // 10k
   // Calculations:
-  // The formula is: Temperature in Kelvin = 1 / {A + B[ln(R)] + C[ln(R)]^3} where A, B and C are the coefficients above and R is the resistance across the thermistor.
-  // First step is to calculate the resistance of the thermistor using the potential divider equation V_out = (R1 + R2)/(R1 * R2)*V_in
-  // As R2 is the only unknown variable we can re-write this as: R2 = R1((V_in/V_out)-1).  R2 = (R1 V2)/(V1-V2)
-  // As the ADC values are our readings of the voltage, we can substitute V_in with 1024 and V_out with the reading taken from the ADC, which is passed into this function as rawADC
-  // This makes the calculation:
-  float thermistorResistance = ((float)FIXED_RESISTOR_VALUE * (float)rawADC) / (float)((float)1023 - (float)rawADC);
-  // Next, you'll notice that the log natural (ln) of this resistance needs to be calculated 4 times in the Steinhart-Hart equation. This is a complex and long calculation for the arduino.
-  // As such it is efficient to do it once and save the result for use later:
+  // The formula is: Temperature in Kelvin = 1 / {A + B[ln(R)] + C[ln(R)]^3}
+  // where A, B and C are the coefficients above and R is the resistance across
+  // the thermistor. First step is to calculate the resistance of the thermistor
+  // using the potential divider equation V_out = (R1 + R2)/(R1 * R2)*V_in As R2
+  // is the only unknown variable we can re-write this as: R2 =
+  // R1((V_in/V_out)-1).  R2 = (R1 V2)/(V1-V2) As the ADC values are our
+  // readings of the voltage, we can substitute V_in with 1024 and V_out with
+  // the reading taken from the ADC, which is passed into this function as
+  // rawADC This makes the calculation:
+  float thermistorResistance = ((float)FIXED_RESISTOR_VALUE * (float)rawADC) /
+                               (float)((float)1023 - (float)rawADC);
+  // Next, you'll notice that the log natural (ln) of this resistance needs to
+  // be calculated 4 times in the Steinhart-Hart equation. This is a complex and
+  // long calculation for the arduino. As such it is efficient to do it once and
+  // save the result for use later:
   double lnResistance = log(thermistorResistance);
   // Now plug it all into the equation:
-  double temperature = 1 / (A + (B * lnResistance) + (C * lnResistance * lnResistance * lnResistance));
-  // We now have the temperature in Kelvin. To convert it into Celcius we need to subtract 273.15
+  double temperature = 1 / (A + (B * lnResistance) +
+                            (C * lnResistance * lnResistance * lnResistance));
+  // We now have the temperature in Kelvin. To convert it into Celcius we need
+  // to subtract 273.15
   temperature = temperature - 273.15;
   // if (DEBUG_MODE)
   // {
@@ -580,14 +733,15 @@ float thermistorADCToCelcius(int rawADC, uint8_t thermNumber) {
   return (temperature);
 }
 
-// BLUETOOTH DATA PACKETING FUNCTIONS
-// The two functions in this section handle packeting the data and sending it over USART to the bluetooth module. The two functions are
-//  identically named so are called the in the same way, however the first is run if the value passed to it is a float and the second is
-//  run if the value passed into it is an integer (an override function). For all intents and purposes you can ignore this and simply call
-//  'sendData(identifier, value);' using one of the defined identifiers and either a float or integer value to send informaion over BT.
-//
-// identifier:  see definitions in the Globals.h file
-// value:       the value to send (typically some caluclated value from a sensor)
+/**
+ * @brief Sends data packet over USART to the bluetooth module.
+ *
+ * These functions handle packeting the data and sending it over USART.
+ * There are two versions: one for float values and one for integer values.
+ *
+ * @param identifier The data identifier (see Globals.h).
+ * @param value The value to send.
+ */
 
 /**
  * @brief Sends a float value over Bluetooth using a custom packet format.
@@ -595,7 +749,7 @@ float thermistorADCToCelcius(int rawADC, uint8_t thermNumber) {
  * @param value The float value to send.
  */
 void sendData(char identifier, float value) {
-  if (!DEBUG_MODE)  // Only runs if debug mode is LOW (0)
+  if (!DEBUG_MODE) // Only runs if debug mode is LOW (0)
   {
     byte dataByte1;
     byte dataByte2;
@@ -656,14 +810,15 @@ void sendData(char identifier, int value) {
     byte dataByte2;
     if (value <= 127) {
       dataByte1 = (byte)value;
-      dataByte2 = 0;  // we know there's no decimal component as an int was passed in
+      dataByte2 =
+          0; // we know there's no decimal component as an int was passed in
     } else {
       int tens;
       int hundreds;
       hundreds = (int)(value / 100);
       tens = value - (hundreds * 100);
       dataByte1 = (byte)hundreds;
-      dataByte1 += 128;  // sets MSB High to indicate Integer value
+      dataByte1 += 128; // sets MSB High to indicate Integer value
       dataByte2 = (byte)tens;
     }
 #ifdef NANO_EVERY
@@ -690,7 +845,8 @@ void sendData(char identifier, int value) {
 }
 
 /**
- * @brief Configures the HC-05 Bluetooth module with name, baud rate, and password.
+ * @brief Configures the HC-05 Bluetooth module with name, baud rate, and
+ * password.
  */
 void configureBluetooth() {
 
@@ -698,18 +854,17 @@ void configureBluetooth() {
 
   flushSerial();
 
-  SerialA.begin(38400);  // AT mode baud rate
+  SerialA.begin(38400); // AT mode baud rate
   while (!SerialA) {
-  }  // Wait for serial to initialise
+  } // Wait for serial to initialise
 
   uint8_t atMode = 0;
 
-
-#ifdef JUMPER_BT_EN  // PCBV2 - Automatically set BT AT Mode by setting EN pin HIGH
+#ifdef JUMPER_BT_EN // PCBV2 - Automatically set BT AT Mode by setting EN pin
+                    // HIGH
   digitalWrite(BT_EN_PIN, HIGH);
   delay(100);
 #endif
-
 
   if (atModeCheck()) {
 
@@ -717,7 +872,8 @@ void configureBluetooth() {
 #ifdef NANO_EVERY
     Serial.println(F("HC-05 AT MODE Entered"));
 #endif
-  } else {  // If AT Mode not entered, send error messages, and exit config gracefully
+  } else { // If AT Mode not entered, send error messages, and exit config
+           // gracefully
 #ifdef NANO_EVERY
     Serial.println(F("HC-05 not in AT Mode"));
     Serial.println(F("To program HC-05 Module, perform a cold boot."));
@@ -726,38 +882,44 @@ void configureBluetooth() {
 #ifdef JUMPER_BT_EN
     digitalWrite(BT_EN_PIN, LOW);
 #endif
-    
-    SerialA.println(F("AT+RESET\r\n"));  // Unlikely event - Just in case it actually had entered, attempt to exit.
+
+    SerialA.println(
+        F("AT+RESET\r\n")); // Unlikely event - Just in case it actually had
+                            // entered, attempt to exit.
     return;
   }
 
-
-
-  uint8_t btNameSet = 0;  // These will be set to 1 when each is successfully updated
+  uint8_t btNameSet =
+      0; // These will be set to 1 when each is successfully updated
   uint8_t btBaudSet = 0;
   uint8_t btPassSet = 0;
 
   // Get and print HC-05 Firmware Version
+  String response;
 #ifdef NANO_EVERY
   flushSerial();
   SerialA.print(F("AT+VERSION?\r\n"));
-  SerialA.flush();     // Waits for transmission to end
-  waitForSerial(100);  // Waits for start of response with 500ms timeout
-  delay(50);           // Now waits to ensure full response is recieved
-  String response = (SerialA.readStringUntil('\n'));
-  response.trim();  //removes any leading or trailing whitespace
+  SerialA.flush();    // Waits for transmission to end
+  waitForSerial(100); // Waits for start of response with 500ms timeout
+  delay(50);          // Now waits to ensure full response is recieved
+  response = (SerialA.readStringUntil('\n'));
+  response.trim(); // removes any leading or trailing whitespace
 
   Serial.print(F("HC-05 Firmware Version: "));
   Serial.println(response);
 
   if (response.equals("+VERSION:hc05V2.3_le OK")) {
     Serial.println(F("\n\r******************"));
-    Serial.println(F("WARNING - This is not an HC-05 compatible Bluetooth module as it uses BLE instead of Bluetooth 2.0"));
-    Serial.println(F("The eChook Nano CANNOT work with this module. Setup will not continue."));
-    Serial.println(F("Please see https://docs.echook.uk/troubleshooting/bluetooth"));
+    Serial.println(F("WARNING - This is not an HC-05 compatible Bluetooth "
+                     "module as it uses BLE instead of Bluetooth 2.0"));
+    Serial.println(F("The eChook Nano CANNOT work with this module. Setup will "
+                     "not continue."));
+    Serial.println(
+        F("Please see https://docs.echook.uk/troubleshooting/bluetooth"));
     Serial.println(F("******************\n\r"));
     digitalWrite(13, HIGH);
-    while (1) {}
+    while (1) {
+    }
   }
 #endif
 
@@ -765,23 +927,24 @@ void configureBluetooth() {
 #ifdef NANO_EVERY
   flushSerial();
   SerialA.print(F("AT+VERSION?\r\n"));
-  SerialA.flush();     // Waits for transmission to end
-  waitForSerial(500);  // Waits for start of response with 500ms timeout
-  delay(50);           // Now waits to ensure full response is recieved
+  SerialA.flush();    // Waits for transmission to end
+  waitForSerial(500); // Waits for start of response with 500ms timeout
+  delay(50);          // Now waits to ensure full response is recieved
   String responseFW = (SerialA.readStringUntil('\n'));
-  response.trim();  //removes any leading or trailing whitespace
+  response.trim(); // removes any leading or trailing whitespace
 
   Serial.print(F("HC-05 Firmware Version: "));
   Serial.println(responseFW);
 #endif
 
   // Set Bluetooth Name
-  flushSerial();  // Flush the buffer. Not entirely sure what is in there to flush at this point, but it is needed!
+  flushSerial(); // Flush the buffer. Not entirely sure what is in there to
+                 // flush at this point, but it is needed!
 
   SerialA.print(F("AT+NAME=\""));
   SerialA.print(CAL_BT_NAME);
   SerialA.print(F("\"\r\n"));
-  SerialA.flush();  //Wait for transmission to end
+  SerialA.flush(); // Wait for transmission to end
   // Now Check Response
   waitForSerial(100);
   delay(50);
@@ -798,14 +961,13 @@ void configureBluetooth() {
 #endif
   }
 
-
   // Set Baud Rate_____________________________________________
   // delay(100);
   flushSerial();
-  SerialA.print(F("AT+UART="));  // command to change BAUD rate
+  SerialA.print(F("AT+UART=")); // command to change BAUD rate
   SerialA.print(CAL_BT_BAUDRATE);
-  SerialA.println(F(",0,0"));  // Parity and Stop bits
-  SerialA.flush();             //Wait for transmission to end
+  SerialA.println(F(",0,0")); // Parity and Stop bits
+  SerialA.flush();            // Wait for transmission to end
   // Now Check Response.
   waitForSerial(100);
   delay(50);
@@ -823,13 +985,13 @@ void configureBluetooth() {
   }
 
   // Set Bluetooth Password
-  flushSerial();  // Flush the serial input buffer
+  flushSerial(); // Flush the serial input buffer
 
   SerialA.print(F("AT+PSWD=\""));
   SerialA.print(CAL_BT_PASSWORD);
   SerialA.print(F("\"\r\n"));
 
-  SerialA.flush();  //Wait for transmission to end
+  SerialA.flush(); // Wait for transmission to end
   // Now Check Response
   waitForSerial(100);
   delay(50);
@@ -847,7 +1009,6 @@ void configureBluetooth() {
 #endif
   }
 
-
   // Check all operations completed successfully
   if (btBaudSet && btNameSet && btPassSet) {
     flushSerial();
@@ -858,30 +1019,32 @@ void configureBluetooth() {
     Serial.println(F("HC-05 Configuration Successful, Resetting..."));
 #endif
     delay(100);
-    SerialA.println(F("AT+RESET\r\n"));  // has to be in the middle to provide a suitable delay before and after
-    SerialA.flush();                     // Wait for transmission to end.
+    SerialA.println(F("AT+RESET\r\n")); // has to be in the middle to provide a
+                                        // suitable delay before and after
+    SerialA.flush();                    // Wait for transmission to end.
   }
-  
+
   // Test if AT mode has successfuly exited, if not, reset until it does!
   digitalWrite(13, HIGH);
 
   while (atMode) {
     delay(100);
     flushSerial();
-    SerialA.println(F("AT+RESET\r\n"));  // has to be in the middle to provide a suitable delay before and after
+    SerialA.println(F("AT+RESET\r\n")); // has to be in the middle to provide a
+                                        // suitable delay before and after
     SerialA.flush();
     delay(100);
     atMode = atModeCheck();
-
   }
   // Send the reset command.
   delay(100);
-  SerialA.println(F("AT+RESET\r\n"));  // has to be in the middle to provide a suitable delay before and after
+  SerialA.println(F("AT+RESET\r\n")); // has to be in the middle to provide a
+                                      // suitable delay before and after
   SerialA.flush();
 
-  SerialA.begin(CAL_BT_BAUDRATE);  // reset baud rate
+  SerialA.begin(CAL_BT_BAUDRATE); // reset baud rate
   while (!SerialA) {
-  }  // wait while serial is inialising
+  } // wait while serial is inialising
   return;
 }
 
@@ -892,11 +1055,11 @@ void configureBluetooth() {
 int atModeCheck() {
   flushSerial();
   SerialA.print(F("AT\r\n"));
-  SerialA.flush();     // Waits for transmission to end
-  waitForSerial(100);  // Waits for start of response with 500ms timeout
-  delay(50);           // Now waits to ensure full response is recieved
+  SerialA.flush();    // Waits for transmission to end
+  waitForSerial(100); // Waits for start of response with 500ms timeout
+  delay(50);          // Now waits to ensure full response is recieved
   String response = (SerialA.readStringUntil('\n'));
-  response.trim();  //removes any leading or trailing whitespace
+  response.trim(); // removes any leading or trailing whitespace
   if (response.equals("OK")) {
     return 1;
   } else {
@@ -907,7 +1070,8 @@ int atModeCheck() {
 /**
  * @brief Flushes the SerialA read buffer.
  */
-void flushSerial() {  // SerialA.flush() flushes the write buffer, this function manually flushes the read buffer.
+void flushSerial() { // SerialA.flush() flushes the write buffer, this function
+                     // manually flushes the read buffer.
   while (SerialA.available()) {
     SerialA.read();
   }
@@ -920,5 +1084,6 @@ void flushSerial() {  // SerialA.flush() flushes the write buffer, this function
 void waitForSerial(int timeOut) {
   unsigned long tempTime = millis() + timeOut;
   while (!SerialA.available() && millis() < tempTime) {
-  }  // Do nothing - i.e. wait until serial becomes availble or the timeout is reached.
+  } // Do nothing - i.e. wait until serial becomes availble or the timeout is
+    // reached.
 }

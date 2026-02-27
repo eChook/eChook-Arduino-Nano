@@ -22,11 +22,10 @@ const float CODE_VERSION = 2.05;
 #include <Bounce2.h>
 #include <math.h>
 
+// Hardware Abstraction Layer contains definitions for architecture specific code.
+#include "Hardware.h"
 
-// Detects if board is an Arduino Nano Every, sets flags to change code
-// accordingly.
 #if defined(__AVR_ATmega4809__)
-#define NANO_EVERY
 /** @brief Hardware serial reference for Arduino Nano Every. */
 HardwareSerial &SerialA = Serial1;
 #else
@@ -80,14 +79,9 @@ void setup() {
  * Regularly updates sensors and checks buttons.
  */
 void loop() {
-  eChookRoutinesUpdate(); // This function runs all the code for the eChook
-                          // to read and send data on time. Find the code in
-                          // the eChook_Functions.ino file
+  eChookRoutinesUpdate(); // This function runs all the code for the eChook to read and send data on time. Find the code in the eChook_Functions.ino file
 
-  buttonChecks(); // Checks buttons each loop, debounces and sends any changes
-                  // in state
+  buttonChecks(); // Checks buttons each loop, debounces and sends any changes in state
 
-  // Any new code you want to add to loop you can add below, HOWEVER avoid using
-  // blocking code (anything that takes a long time to complete or uses
-  // 'delay()' as it will cause timing errors with the eChook code.
+  // Any new code you want to add to loop you can add below, HOWEVER avoid using blocking code (anything that takes a long time to complete or uses 'delay()' as it will cause timing errors with the eChook code.
 }

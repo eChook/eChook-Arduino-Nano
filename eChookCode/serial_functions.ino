@@ -8,8 +8,8 @@
  */
 
 /**
- * @brief Checks for incoming serial commands and executes the appropriate
- * action. Handles the configuration menu logic over USB Serial.
+/**
+ * @brief Checks for incoming serial commands and executes the appropriate action. Handles the configuration menu logic over USB Serial.
  */
 void SerialCheck() {
 
@@ -19,8 +19,7 @@ void SerialCheck() {
     long menuEnterTime = millis();
     while (inMenu) {
       if (temp == 'g') {
-        inConfig = 1; // This triggers the nano every to start sending data out
-                      // over USB Serial.
+        inConfig = 1; // This triggers the nano every to start sending data out over USB Serial.
         // Get / Request Calibration Data (Get/Set)
         // Action - send calibration data.
         while (!Serial.available()) {
@@ -190,8 +189,8 @@ void receiveBTName() {
 }
 
 /**
- * @brief Receives new float calibration data from Serial and saves it to
- * EEPROM.
+/**
+ * @brief Receives new float calibration data from Serial and saves it to EEPROM.
  */
 void receiveFloatCal() {
   unsigned long entryTime = millis();
@@ -217,8 +216,8 @@ void receiveFloatCal() {
 }
 
 /**
- * @brief Receives new binary calibration data from Serial and saves it to
- * EEPROM.
+/**
+ * @brief Receives new binary calibration data from Serial and saves it to EEPROM.
  */
 void receiveBinaryCal() {
   unsigned long entryTime = millis();

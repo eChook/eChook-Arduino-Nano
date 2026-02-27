@@ -4,86 +4,86 @@
  */
 
 // Bluetooth Data Identifiers
+#include <Arduino.h>
+
 /** @brief Data identifier for speed (m/s). */
-const char SPEED_ID = 's';
+extern const char SPEED_ID;
 /** @brief Data identifier for motor RPM. */
-const char MOTOR_ID = 'm';
+extern const char MOTOR_ID;
 /** @brief Data identifier for battery current (Amps). */
-const char CURRENT_ID = 'i';
+extern const char CURRENT_ID;
 /** @brief Data identifier for total battery voltage. */
-const char VOLTAGE_ID = 'v';
+extern const char VOLTAGE_ID;
 /** @brief Data identifier for lower battery bank voltage. */
-const char VOLTAGE_LOWER_ID = 'w';
+extern const char VOLTAGE_LOWER_ID;
 /** @brief Data identifier for throttle input (%). */
-const char THROTTLE_INPUT_ID = 't';
+extern const char THROTTLE_INPUT_ID;
 /** @brief Data identifier for throttle output (%). */
-const char THROTTLE_OUTPUT_ID = 'd';
+extern const char THROTTLE_OUTPUT_ID;
 /** @brief Data identifier for throttle input voltage (V). */
-const char THROTTLE_VOLTAGE_ID = 'T';
+extern const char THROTTLE_VOLTAGE_ID;
 /** @brief Data identifier for temperature sensor 1 (°C). */
-const char TEMP1_ID = 'a';
+extern const char TEMP1_ID;
 /** @brief Data identifier for temperature sensor 2 (°C). */
-const char TEMP2_ID = 'b';
+extern const char TEMP2_ID;
 /** @brief Data identifier for internal processor temperature (°C). */
-const char TEMP3_ID = 'c';
+extern const char TEMP3_ID;
 /** @brief Data identifier for launch mode state. */
-const char LAUNCH_MODE_ID = 'L';
+extern const char LAUNCH_MODE_ID;
 /** @brief Data identifier for UI cycle button state. */
-const char CYCLE_VIEW_ID = 'C';
+extern const char CYCLE_VIEW_ID;
 /** @brief Data identifier for calculated gear ratio. */
-const char GEAR_RATIO_ID = 'r';
+extern const char GEAR_RATIO_ID;
 /** @brief Data identifier for brake pedal state. */
-const char BRAKE_PRESSED_ID = 'B';
+extern const char BRAKE_PRESSED_ID;
 /** @brief Data identifier for measured ADC reference voltage. */
-const char REF_VOLTAGE_ID = 'V';
+extern const char REF_VOLTAGE_ID;
 
 /** @brief The reference voltage (in Volts) used for ADC calculations. */
-float referenceVoltage = 0;
+extern float referenceVoltage;
 
 // Read in values:
 /** @brief Most recently measured total battery voltage (V). */
-float batteryVoltageTotal = 0;
+extern float batteryVoltageTotal;
 /** @brief Most recently measured lower battery bank voltage (V). */
-float batteryVoltageLower = 0;
+extern float batteryVoltageLower;
 /** @brief Calculated throttle output percentage (%). */
-float throttleOutput = 0;
+extern float throttleOutput;
 /** @brief Most recently read throttle input percentage (%). */
-float throttleIn = 0;
+extern float throttleIn;
 /** @brief Most recently read throttle voltage from the ADC (V). */
-float throttleV = 0;
+extern float throttleV;
 /** @brief Most recently measured battery current (Amps). */
-float current = 0;
+extern float current;
 /** @brief Most recently calculated motor RPM. */
-float motorRPM = 0;
-/** @brief Most recently calculated wheel RPM. Stored globally for gear ratio
- * calculations. */
-float wheelRPM = 0;
+extern float motorRPM;
+/** @brief Most recently calculated wheel RPM. Stored globally for gear ratio calculations. */
+extern float wheelRPM;
 /** @brief Most recently calculated wheel speed (m/s). */
-float wheelSpeed = 0;
+extern float wheelSpeed;
 /** @brief Most recently calculated gear ratio (Motor RPM / Wheel RPM). */
-float gearRatio = 0;
+extern float gearRatio;
 /** @brief Most recently read temperature from sensor 1 (°C). */
-float tempOne = 0;
+extern float tempOne;
 /** @brief Most recently read temperature from sensor 2 (°C). */
-float tempTwo = 0;
+extern float tempTwo;
 /** @brief Most recently read internal processor temperature (°C). */
-float tempThree = 0;
+extern float tempThree;
 /** @brief Current brake state (0 = released, 1 = pressed). */
-uint8_t brake = 0;
+extern uint8_t brake;
 
 /** @brief Flag set to 1 when the board is in configuration mode. */
-uint8_t inConfig = 0;
+extern uint8_t inConfig;
 
 // Interrupt Variables.
 /** @brief Counter for motor pulses detected by interrupt. */
-volatile unsigned long motorPoll = 0;
+extern volatile unsigned long motorPoll;
 /** @brief Counter for wheel pulses detected by interrupt. */
-volatile unsigned long wheelPoll = 0;
+extern volatile unsigned long wheelPoll;
 
 // Tip: Any variables that are being used in an Interrupt Service Routine need
 // to be declared as volatile. This ensures that each time the variable is
-// accessed it is the master copy in RAM rather than a cached version within the
-// CPU. This way the main loop and the ISR variables are always in sync
+// accessed it is the master copy in RAM rather than a cached version within the CPU. This way the main loop and the ISR variables are always in sync
 
 /*
  * Sensor Smoothing Implementation Notes:
@@ -95,39 +95,34 @@ volatile unsigned long wheelPoll = 0;
 
 // Current Smoothing Variables:
 /** @brief Number of samples to include in the current moving average. */
-const uint8_t currentSmoothingSetting = 4;
+extern const uint8_t currentSmoothingSetting;
 /** @brief Buffer for storing current samples for moving average. */
-float currentSmoothingArray[currentSmoothingSetting];
-/** @brief Index for the next current sample to be stored in the smoothing
- * array. */
-uint8_t currentSmoothingCount = 0;
+extern float currentSmoothingArray[];
+/** @brief Index for the next current sample to be stored in the smoothing array. */
+extern uint8_t currentSmoothingCount;
 
 // ISR Wheel and Motor Speed Variables
 /** @brief Timestamp of the last motor pulse interrupt (microseconds). */
-volatile unsigned long lastMotorPollTime = 0;
-/** @brief Time interval between the two most recent motor pulses
- * (microseconds). */
-volatile unsigned long lastMotorInterval = 0;
+extern volatile unsigned long lastMotorPollTime;
+/** @brief Time interval between the two most recent motor pulses (microseconds). */
+extern volatile unsigned long lastMotorInterval;
 /** @brief Timestamp of the last wheel pulse interrupt (microseconds). */
-volatile unsigned long lastWheelPollTime = 0;
-/** @brief Time interval between the two most recent wheel pulses
- * (microseconds). */
-volatile unsigned long lastWheelInterval = 0;
-/** @brief Flag set by wheel interrupt indicating a new pulse has been
- * processed. */
-volatile bool newSpeedSignal = 0;
-/** @brief Flag set by motor interrupt indicating a new pulse has been
- * processed. */
-volatile bool newMotorSignal = 0;
+extern volatile unsigned long lastWheelPollTime;
+/** @brief Time interval between the two most recent wheel pulses (microseconds). */
+extern volatile unsigned long lastWheelInterval;
+/** @brief Flag set by wheel interrupt indicating a new pulse has been processed. */
+extern volatile bool newSpeedSignal;
+/** @brief Flag set by motor interrupt indicating a new pulse has been processed. */
+extern volatile bool newMotorSignal;
 
 // Smoothing for RPM and Speed
 /** @brief Array size for RPM and speed moving averages. */
-const int smoothingSize = 4;
+extern const int smoothingSize;
 /** @brief Buffer for motor RPM moving average. */
-float motorRPMSmoothing[smoothingSize];
+extern float motorRPMSmoothing[];
 /** @brief Index for the next motor RPM sample in the smoothing buffer. */
-int motorSmoothingIndex = 0;
+extern int motorSmoothingIndex;
 /** @brief Buffer for wheel speed moving average. */
-float wheelSpeedSmoothing[smoothingSize];
+extern float wheelSpeedSmoothing[];
 /** @brief Index for the next wheel speed sample in the smoothing buffer. */
-int wheelSmoothingIndex = 0;
+extern int wheelSmoothingIndex;

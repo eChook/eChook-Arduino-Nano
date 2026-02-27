@@ -3,6 +3,8 @@
  * @brief Hardware pin mapping for the eChook Telemetry Board.
  */
 
+#include <Arduino.h>
+
 // ANALOG INPUT PINS
 /** @brief Analog input pin for measuring total battery voltage. */
 const int VBATT_IN_PIN = A0;
@@ -10,12 +12,10 @@ const int VBATT_IN_PIN = A0;
 const int AMPS_IN_PIN = A2;
 /** @brief Analog input pin for reading the throttle pedal/button. */
 const int THROTTLE_IN_PIN = A3;
-/** @brief Analog input pin for temperature sensor 1. Reassignable if I2C jumper
- * is used. */
-int TEMP1_IN_PIN = A5;
-/** @brief Analog input pin for temperature sensor 2. Reassignable if I2C jumper
- * is used. */
-int TEMP2_IN_PIN = A4;
+/** @brief Analog input pin for temperature sensor 1. Reassignable if I2C jumper is used. */
+extern int TEMP1_IN_PIN;
+/** @brief Analog input pin for temperature sensor 2. Reassignable if I2C jumper is used. */
+extern int TEMP2_IN_PIN;
 /** @brief Analog input pin for measuring lower battery bank voltage. */
 const int VBATT1_IN_PIN = A7;
 

@@ -13,7 +13,7 @@
  * @brief The version of the code running on the board.
  * Used to check compatibility with the online configuration editor.
  */
-const float CODE_VERSION = 2.05;
+#define CODE_VERSION 2.05
 
 // Includes
 #include "Calibration.h"

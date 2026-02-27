@@ -13,16 +13,13 @@
 
 extern void motorSpeedISR();
 extern void wheelSpeedISR();
-extern const float CODE_VERSION;
-extern int inConfig;
+// extern int inConfig;
 
 void hardwareSerialSetup() {
   // Starts USB Serial as well on Arduino Nano Every at the same baud rate as
   // set for Bluetooth
   Serial.begin(CAL_BT_BAUDRATE);
   Serial.println(("\n\n\neChook Nano Starting Setup"));
-  Serial.print(("Firmware Version: "));
-  Serial.println(CODE_VERSION);
 }
 
 void hardwarePrintSetupComplete() {
@@ -32,6 +29,35 @@ void hardwarePrintSetupComplete() {
 }
 
 void hardwareAttachInterrupts() {
+  // Motor speed is on Pin 2 -> PA0
+  // Wheel speed is on Pin 3 -> PF5
+
+  // 1. Configure Event System Generators
+  // Route Port A, Pin 0 (Motor) to EVSYS Channel 0
+  EVSYS.CHANNEL0 = EVSYS_GENERATOR_PORT0_PIN0_gc;
+
+  // Route Port F, Pin 5 (Wheel) to EVSYS Channel 1
+  EVSYS.CHANNEL1 = EVSYS_GENERATOR_PORT1_PIN5_gc;
+
+  // 2. Configure Event System Users (The Timers)
+  // Connect TCB0 (Motor) to Event Channel 0
+  EVSYS.USERTCB0 = EVSYS_CHANNEL_CHANNEL0_gc;
+
+  // Connect TCB1 (Wheel) to Event Channel 1
+  EVSYS.USERTCB1 = EVSYS_CHANNEL_CHANNEL1_gc;
+
+  // 3. Configure Timer B 0 (Motor)
+  TCB0.CTRLB = TCB_CNTMODE_FRQ_gc;                   // Frequency/Pulse measurement mode
+  TCB0.EVCTRL = TCB_CAPTEI_bm;                       // Enable Input Capture Event
+  TCB0.CTRLA = TCB_CLKSEL_CLKTCA_gc | TCB_ENABLE_bm; // Use TCA0 clock (250kHz, 4us ticks), Enable TCB0
+
+  // 4. Configure Timer B 1 (Wheel)
+  TCB1.CTRLB = TCB_CNTMODE_FRQ_gc;                   // Frequency/Pulse measurement mode
+  TCB1.EVCTRL = TCB_CAPTEI_bm;                       // Enable Input Capture Event
+  TCB1.CTRLA = TCB_CLKSEL_CLKTCA_gc | TCB_ENABLE_bm; // Use TCA0 clock (250kHz, 4us ticks), Enable TCB1
+
+  // 5. Normal Interrupts
+  // We still attach the standard interrupts. The ISR will read the TCB hardware registers.
   attachInterrupt(2, motorSpeedISR, RISING);
   attachInterrupt(3, wheelSpeedISR, RISING);
 }

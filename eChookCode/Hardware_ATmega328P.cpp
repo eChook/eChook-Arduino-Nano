@@ -88,11 +88,19 @@ void hardwareSerialWriteConfig(char identifier, byte dataByte1, byte dataByte2) 
   // OG Nano doesn't do anything extra here
 }
 
-void hardwareSerialPrint(const String &text) {
+void hardwareSerialPrint(const char *text) {
   // Not needed on standard Nano as debug goes out via SerialA anyway
 }
 
-void hardwareSerialPrintln(const String &text) {
+void hardwareSerialPrint(const __FlashStringHelper *text) {
+  // Not needed on standard Nano as debug goes out via SerialA anyway
+}
+
+void hardwareSerialPrintln(const char *text) {
+  // Not needed on standard Nano as debug goes out via SerialA anyway
+}
+
+void hardwareSerialPrintln(const __FlashStringHelper *text) {
   // Not needed on standard Nano as debug goes out via SerialA anyway
 }
 

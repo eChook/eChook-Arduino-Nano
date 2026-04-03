@@ -113,11 +113,19 @@ void hardwareSerialWriteConfig(char identifier, byte dataByte1, byte dataByte2) 
   }
 }
 
-void hardwareSerialPrint(const String &text) {
+void hardwareSerialPrint(const char *text) {
   Serial.print(text);
 }
 
-void hardwareSerialPrintln(const String &text) {
+void hardwareSerialPrint(const __FlashStringHelper *text) {
+  Serial.print(text);
+}
+
+void hardwareSerialPrintln(const char *text) {
+  Serial.println(text);
+}
+
+void hardwareSerialPrintln(const __FlashStringHelper *text) {
   Serial.println(text);
 }
 

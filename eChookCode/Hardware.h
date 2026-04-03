@@ -51,12 +51,14 @@ void hardwareSerialWriteConfig(char identifier, byte dataByte1, byte dataByte2);
  * @brief Write a string to the debugging serial port.
  * @param text The text to print.
  */
-void hardwareSerialPrint(const String &text);
+void hardwareSerialPrint(const char *text);
+void hardwareSerialPrint(const __FlashStringHelper *text);
 
 /**
  * @brief Write a line to the debugging serial port.
  * @param text The text to print.
  */
-void hardwareSerialPrintln(const String &text);
+void hardwareSerialPrintln(const char *text);
+void hardwareSerialPrintln(const __FlashStringHelper *text);
 
 #endif // HARDWARE_H

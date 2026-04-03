@@ -13,8 +13,8 @@
 uint8_t FORCE_USE_HARDCODED_CAL = 0;
 uint8_t CAL_USE_EEPROM = 1;
 
-String CAL_BT_NAME = "eChook";
-String CAL_BT_PASSWORD = "1234";
+char CAL_BT_NAME[32] = "eChook";
+char CAL_BT_PASSWORD[32] = "1234";
 long CAL_BT_BAUDRATE = 115200;
 
 unsigned long CAL_DATA_TRANSMIT_INTERVAL = 100;

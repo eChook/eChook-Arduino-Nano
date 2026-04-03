@@ -24,9 +24,9 @@ extern uint8_t CAL_USE_EEPROM;
 
 // Bluetooth Settings
 /** @brief The bluetooth name for the car. */
-extern String CAL_BT_NAME;
+extern char CAL_BT_NAME[32];
 /** @brief The bluetooth pairing password. */
-extern String CAL_BT_PASSWORD;
+extern char CAL_BT_PASSWORD[32];
 /** @brief Serial communication baud rate. Must match both BT module and Arduino settings. */
 extern long CAL_BT_BAUDRATE; // Baud Rate to run at. Must match Arduino's baud rate.
 

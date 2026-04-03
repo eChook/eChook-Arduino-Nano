@@ -290,19 +290,17 @@ void clearVerificationByte() { EEPROM.write(0, 0xFF); }
  */
 void writeBTName() {
   char buff[30] = {0};
-  CAL_BT_NAME.toCharArray(buff, 30);
+  strncpy(buff, CAL_BT_NAME, 29);
   EEPROM.put(NAME_ARRAY_START, buff);
 }
 
-/**
- * @brief Reads the Bluetooth name from EEPROM into the global variable.
- */
 void getBTName() {
-  String temp = "";
-  for (uint8_t i = 0; i < 30; i++) {
+  uint8_t outIdx = 0;
+  for (uint8_t i = 0; i < 30 && outIdx < 31; i++) {
     char tmpChar = getNameByte(i);
-    if (tmpChar != 0x00 && tmpChar != 0xff)
-      temp += tmpChar;
+    if (tmpChar != (char)0x00 && tmpChar != (char)0xff) {
+      CAL_BT_NAME[outIdx++] = tmpChar;
+    }
   }
-  CAL_BT_NAME = temp;
+  CAL_BT_NAME[outIdx] = '\0';
 }

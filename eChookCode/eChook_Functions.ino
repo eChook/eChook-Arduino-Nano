@@ -428,7 +428,11 @@ float readWheelSpeed() {
     return 0;
 
   // Timeout logic: if no pulse for 3 seconds, speed is 0
-  unsigned long timeSinceLast = micros() - lastWheelPollTime; // Handle wrap-around automatically
+  unsigned long timeSinceLast;
+  noInterrupts();
+  timeSinceLast = micros() - lastWheelPollTime; // Handle wrap-around automatically
+  interrupts();
+
   if (timeSinceLast > 3000000) {
     wheelSpeed = 0;
     // Reset smoothing buffer
@@ -437,14 +441,18 @@ float readWheelSpeed() {
     return 0;
   }
 
-  if (newSpeedSignal) {
-    newSpeedSignal = false;
+  noInterrupts();
+  bool speedSignal = newSpeedSignal;
+  unsigned long interval = lastWheelInterval;
+  newSpeedSignal = false;
+  interrupts();
 
-    if (lastWheelInterval > 0) {
+  if (speedSignal) {
+    if (interval > 0) {
       // Calculate instantaneous Speed in m/s
       // Interval is in micros.
       // RPS = 1,000,000 / (interval * magnets)
-      float wheelRPS = 1000000.0 / ((float)(lastWheelInterval * CAL_WHEEL_MAGNETS));
+      float wheelRPS = 1000000.0 / ((float)(interval * CAL_WHEEL_MAGNETS));
       float instantaneousSpeed = wheelRPS * CAL_WHEEL_CIRCUMFERENCE;
 
       // Add to smoothing buffer
@@ -471,7 +479,11 @@ float readMotorRPM() {
     return 0;
 
   // Timeout logic: if no pulse for 1 second, RPM is 0
-  unsigned long timeSinceLast = micros() - lastMotorPollTime;
+  unsigned long timeSinceLast;
+  noInterrupts();
+  timeSinceLast = micros() - lastMotorPollTime;
+  interrupts();
+
   if (timeSinceLast > 1000000) {
     motorRPM = 0;
     // Reset smoothing buffer
@@ -480,13 +492,17 @@ float readMotorRPM() {
     return 0;
   }
 
-  if (newMotorSignal) {
-    newMotorSignal = false;
+  noInterrupts();
+  bool motorSignal = newMotorSignal;
+  unsigned long interval = lastMotorInterval;
+  newMotorSignal = false;
+  interrupts();
 
-    if (lastMotorInterval > 0) {
+  if (motorSignal) {
+    if (interval > 0) {
       // Calculate instantaneous RPM
       // RPM = (1,000,000 / (interval * magnets)) * 60
-      float instantaneousRPM = (60000000.0 / ((float)(lastMotorInterval * CAL_MOTOR_MAGNETS)));
+      float instantaneousRPM = (60000000.0 / ((float)(interval * CAL_MOTOR_MAGNETS)));
 
       // Add to smoothing buffer
       motorRPMSmoothing[motorSmoothingIndex] = instantaneousRPM;
@@ -683,10 +699,13 @@ void sendData(char identifier, int value) {
     SerialA.write(125);
   } else {
 
+    char buffer[16];
+    sprintf(buffer, "%d", value);
     hardwareSerialPrint("Data Out: \t");
-    hardwareSerialPrint(String(identifier));
+    char idStr[2] = {identifier, '\0'};
+    hardwareSerialPrint(idStr);
     hardwareSerialPrint(",\t");
-    hardwareSerialPrintln(String(value));
+    hardwareSerialPrintln(buffer);
   }
 }
 
@@ -737,19 +756,26 @@ void configureBluetooth() {
   uint8_t btPassSet = 0;
 
   // Get and print HC-05 Firmware Version
-  String response;
+  char response[64] = {0};
   flushSerial();
   SerialA.print(F("AT+VERSION?\r\n"));
   SerialA.flush();    // Waits for transmission to end
   waitForSerial(500); // Waits for start of response with 500ms timeout
   delay(50);          // Now waits to ensure full response is recieved
-  response = (SerialA.readStringUntil('\n'));
-  response.trim(); // removes any leading or trailing whitespace
+
+  uint8_t index = 0;
+  while (SerialA.available() && index < 63) {
+    char c = SerialA.read();
+    if (c != '\r' && c != '\n') {
+      response[index++] = c;
+    }
+  }
+  response[index] = '\0';
 
   hardwareSerialPrint(F("HC-05 Firmware Version: "));
   hardwareSerialPrintln(response);
 
-  if (response.equals("+VERSION:hc05V2.3_le OK")) {
+  if (strcmp(response, "+VERSION:hc05V2.3_le OK") == 0) {
     hardwareSerialPrintln(F("\n\r******************"));
     hardwareSerialPrintln(F("WARNING - This is not an HC-05 compatible Bluetooth "
                             "module as it uses BLE instead of Bluetooth 2.0"));
@@ -774,9 +800,15 @@ void configureBluetooth() {
   // Now Check Response
   waitForSerial(100);
   delay(50);
-  response = (SerialA.readStringUntil('\n'));
-  response.trim();
-  if (response.equals("OK")) {
+  index = 0;
+  while (SerialA.available() && index < 63) {
+    char c = SerialA.read();
+    if (c != '\r' && c != '\n') {
+      response[index++] = c;
+    }
+  }
+  response[index] = '\0';
+  if (strcmp(response, "OK") == 0) {
     hardwareSerialPrintln("HC-05 Name Set");
     btNameSet = 1;
   } else {
@@ -793,9 +825,15 @@ void configureBluetooth() {
   // Now Check Response.
   waitForSerial(100);
   delay(50);
-  response = (SerialA.readStringUntil('\n'));
-  response.trim();
-  if (response.equals("OK")) {
+  index = 0;
+  while (SerialA.available() && index < 63) {
+    char c = SerialA.read();
+    if (c != '\r' && c != '\n') {
+      response[index++] = c;
+    }
+  }
+  response[index] = '\0';
+  if (strcmp(response, "OK") == 0) {
     hardwareSerialPrintln(F("HC-05 Baudrate Set"));
     btBaudSet = 1;
   } else {
@@ -813,9 +851,15 @@ void configureBluetooth() {
   // Now Check Response
   waitForSerial(100);
   delay(50);
-  response = (SerialA.readStringUntil('\n'));
-  response.trim();
-  if (response.equals("OK")) {
+  index = 0;
+  while (SerialA.available() && index < 63) {
+    char c = SerialA.read();
+    if (c != '\r' && c != '\n') {
+      response[index++] = c;
+    }
+  }
+  response[index] = '\0';
+  if (strcmp(response, "OK") == 0) {
     hardwareSerialPrintln(F("HC-05 Password Set"));
     btPassSet = 1;
   } else {
@@ -870,9 +914,16 @@ int atModeCheck() {
   SerialA.flush();    // Waits for transmission to end
   waitForSerial(100); // Waits for start of response with 500ms timeout
   delay(50);          // Now waits to ensure full response is recieved
-  String response = (SerialA.readStringUntil('\n'));
-  response.trim(); // removes any leading or trailing whitespace
-  if (response.equals("OK")) {
+  char response[64] = {0};
+  uint8_t index = 0;
+  while (SerialA.available() && index < 63) {
+    char c = SerialA.read();
+    if (c != '\r' && c != '\n') {
+      response[index++] = c;
+    }
+  }
+  response[index] = '\0';
+  if (strcmp(response, "OK") == 0) {
     return 1;
   } else {
     return 0;

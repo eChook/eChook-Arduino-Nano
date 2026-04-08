@@ -806,13 +806,14 @@ void configureBluetooth() {
   uint8_t btPassSet = 0;
 
   // Get and print HC-05 Firmware Version
+  String response;
 #ifdef NANO_EVERY
   flushSerial();
   SerialA.print(F("AT+VERSION?\r\n"));
   SerialA.flush();     // Waits for transmission to end
   waitForSerial(100);  // Waits for start of response with 500ms timeout
   delay(50);           // Now waits to ensure full response is recieved
-  String response = (SerialA.readStringUntil('\n'));
+  response = (SerialA.readStringUntil('\n'));
   response.trim();  //removes any leading or trailing whitespace
 
   Serial.print(F("HC-05 Firmware Version: "));
@@ -857,7 +858,8 @@ void configureBluetooth() {
   response.trim();
   if (response.equals("OK")) {
 #ifdef NANO_EVERY
-    Serial.println("HC-05 Name Set");
+    Serial.print(F("HC-05 Name Set: "));
+    Serial.println(CAL_BT_NAME);
 #endif
     btNameSet = 1;
   } else {
@@ -881,7 +883,8 @@ void configureBluetooth() {
   response.trim();
   if (response.equals("OK")) {
 #ifdef NANO_EVERY
-    Serial.println(F("HC-05 Baudrate Set"));
+    Serial.print(F("HC-05 Baudrate Set: "));
+    Serial.println(CAL_BT_BAUDRATE);
 #endif
     btBaudSet = 1;
   } else {
@@ -905,7 +908,8 @@ void configureBluetooth() {
   response.trim();
   if (response.equals("OK")) {
 #ifdef NANO_EVERY
-    Serial.println(F("HC-05 Password Set"));
+    Serial.print(F("HC-05 Password Set: "));
+    Serial.println(CAL_BT_PASSWORD);
 #endif
     btPassSet = 1;
   } else {

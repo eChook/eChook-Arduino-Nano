@@ -8,7 +8,7 @@
 // Documentation: docs.eChook.uk
 // ===============================================
 
-const float CODE_VERSION = 2.04; // The version of the code running on the board. This is used to check compatibility with the online configuration editor.
+const float CODE_VERSION = 2.043; // The version of the code running on the board. This is used to check compatibility with the online configuration editor.
 
 // Includes
 #include <math.h>

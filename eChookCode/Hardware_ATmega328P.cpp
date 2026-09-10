@@ -84,6 +84,27 @@ float hardwareUpdateReferenceVoltage() {
   return (float)((CAL_INTERNAL_REFERENCE_VOLTAGE * 1024UL) / ADC);
 }
 
+/*
+ * The 328P has no hardware accumulation, so oversampling is a plain loop. At
+ * roughly 112us per conversion this costs about 1.8ms per channel, which is
+ * comfortable inside the 250ms telemetry cycle.
+ */
+#define ANALOG_OVERSAMPLE_COUNT 16
+
+float hardwareAnalogReadOversampled(uint8_t pin) {
+  // Throwaway conversion to settle the mux on this pin. It matters most on the
+  // reading straight after hardwareUpdateReferenceVoltage(), which leaves
+  // ADMUX pointed at the bandgap channel.
+  analogRead(pin);
+
+  uint16_t accumulator = 0;
+  for (uint8_t i = 0; i < ANALOG_OVERSAMPLE_COUNT; i++) {
+    accumulator += analogRead(pin); // Peaks at 16368, so this cannot overflow
+  }
+
+  return (float)accumulator / (float)ANALOG_OVERSAMPLE_COUNT;
+}
+
 void hardwareSerialWriteConfig(char identifier, byte dataByte1, byte dataByte2) {
   // OG Nano doesn't do anything extra here
 }

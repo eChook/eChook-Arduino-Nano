@@ -231,6 +231,31 @@ float hardwareUpdateReferenceVoltage() {
   return railVoltage;
 }
 
+/*
+ * The 4809's ADC can accumulate several conversions in hardware and leave the
+ * sum in the result register, so oversampling costs one conversion sequence
+ * rather than a loop of separate analogRead() calls. The core's analogRead()
+ * returns the whole 16 bit result register, so it can be reused as is: 16
+ * accumulated samples peak at 16368, comfortably inside a signed int.
+ */
+#define ANALOG_OVERSAMPLE_COUNT 16
+#define ANALOG_OVERSAMPLE_GROUP ADC_SAMPNUM_ACC16_gc
+
+float hardwareAnalogReadOversampled(uint8_t pin) {
+  uint8_t oldCTRLB = ADC0.CTRLB;
+
+  // Throwaway conversion to settle the mux on this pin. It matters most on the
+  // reading straight after hardwareUpdateReferenceVoltage(), which leaves the
+  // ADC pointed at the DACREF node.
+  analogRead(pin);
+
+  ADC0.CTRLB = ANALOG_OVERSAMPLE_GROUP;
+  uint16_t accumulator = (uint16_t)analogRead(pin);
+  ADC0.CTRLB = oldCTRLB;
+
+  return (float)accumulator / (float)ANALOG_OVERSAMPLE_COUNT;
+}
+
 void hardwareSerialWriteConfig(char identifier, byte dataByte1, byte dataByte2) {
   if (inConfig) {
     Serial.write(123);

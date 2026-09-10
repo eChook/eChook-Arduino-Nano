@@ -140,6 +140,13 @@ void eChookRoutinesUpdate() {
     // It is recommended to leave the ADC a short recovery period between
     // readings (~1ms). To achieve this we can transmit the data between
     // readings
+    // The reference voltage has to be measured before anything is scaled by
+    // it, otherwise every reading below is corrected using a rail measurement
+    // a full cycle out of date. Sending it straight afterwards doubles as the
+    // ADC recovery delay described above.
+    referenceVoltage = updateReferenceVoltage();
+    sendData(REF_VOLTAGE_ID, referenceVoltage);
+
     batteryVoltageTotal = readVoltageTotal();
     sendData(VOLTAGE_ID, batteryVoltageTotal);
 
@@ -158,9 +165,6 @@ void eChookRoutinesUpdate() {
 
     wheelSpeed = readWheelSpeed();
     sendData(SPEED_ID, wheelSpeed);
-
-    referenceVoltage = updateReferenceVoltage();
-    sendData(REF_VOLTAGE_ID, referenceVoltage);
 
     if (loopCounter == 1) { // Functions to run every 1st loop
       tempOne = readTempOne();
@@ -253,22 +257,31 @@ float updateReferenceVoltage() {
 }
 
 /**
+ * @brief Converts a raw ADC reading into the voltage seen at the Arduino pin.
+ *
+ * An ADC result of N means the input sat somewhere in a band one LSB wide
+ * starting at N, so the best estimate of the input is half an LSB above N.
+ * Dividing by 1024 rather than 1023 matches the convention used to derive the
+ * rail voltage in hardwareUpdateReferenceVoltage(). That consistency matters:
+ * the rail voltage is itself an ADC ratio, so using the same convention on
+ * both sides lets ADC gain error cancel rather than compound.
+ *
+ * @param rawADC The raw reading, on the 0-1023 scale.
+ * @return The voltage at the Arduino pin.
+ */
+float adcToPinVoltage(float rawADC) {
+  return ((rawADC + 0.5) / 1024.0) * referenceVoltage;
+}
+
+/**
  * @brief Reads and calculates the total battery voltage.
  * @return The total battery voltage in volts.
  */
 float readVoltageTotal() {
-  float tempVoltage = analogRead(
-      VBATT_IN_PIN); // this will give a 10 bit value of the voltage with 1024
-                     // representing the ADC reference voltage of 5V
-  tempVoltage =
-      (tempVoltage / 1024) *
-      referenceVoltage; // This gives the actual voltage seen at the arduino
-                        // pin, assuming reference voltage of 5v
-  tempVoltage =
-      tempVoltage *
-      CAL_BATTERY_TOTAL; // Gives battery voltage where 6 is the division ratio
-                         // of the potential divider. NEEDS TUNING!!
-  return (tempVoltage);
+  // Oversampled reading of the potential divider, as the voltage seen at the pin
+  float pinVoltage = adcToPinVoltage(hardwareAnalogReadOversampled(VBATT_IN_PIN));
+  // Scale by the division ratio of the potential divider. NEEDS TUNING!!
+  return (pinVoltage * CAL_BATTERY_TOTAL);
 }
 
 /**
@@ -276,18 +289,10 @@ float readVoltageTotal() {
  * @return The lower battery voltage in volts.
  */
 float readVoltageLower() {
-  float tempVoltage = analogRead(
-      VBATT1_IN_PIN); // this will give a 10 bit value of the voltage with 1024
-                      // representing the ADC reference voltage of 5V
-  tempVoltage =
-      (tempVoltage / 1024) *
-      referenceVoltage; // This gives the actual voltage seen at the arduino
-                        // pin, assuming reference voltage of 5v
-  tempVoltage =
-      tempVoltage *
-      CAL_BATTERY_LOWER; // Gives battery voltage where 3 is the division ratio
-                         // of the potential divider. NEEDS TUNING!!
-  return (tempVoltage);
+  // Oversampled reading of the potential divider, as the voltage seen at the pin
+  float pinVoltage = adcToPinVoltage(hardwareAnalogReadOversampled(VBATT1_IN_PIN));
+  // Scale by the division ratio of the potential divider. NEEDS TUNING!!
+  return (pinVoltage * CAL_BATTERY_LOWER);
 }
 
 /**
@@ -295,28 +300,22 @@ float readVoltageLower() {
  * @return The Current in amps.
  */
 float readCurrent() {
-  float tempCurrent = analogRead(AMPS_IN_PIN);
-  tempCurrent = (tempCurrent / 1024) *
-                referenceVoltage; // gives voltage output of current sensor.
-  tempCurrent =
-      tempCurrent *
-      CAL_CURRENT; // calibration value for LEM current sensor on eChook board.
-  currentSmoothingArray[currentSmoothingCount] =
-      tempCurrent; // updates array with latest value
+  // Oversampled reading, converted to the output voltage of the current sensor
+  float tempCurrent = adcToPinVoltage(hardwareAnalogReadOversampled(AMPS_IN_PIN));
+  tempCurrent = tempCurrent * CAL_CURRENT; // calibration value for LEM current sensor on eChook board.
+
+  currentSmoothingArray[currentSmoothingCount] = tempCurrent; // updates array with latest value
   // The next 5 lines manage the smoothing count for the averaging:
   currentSmoothingCount++; // increment smoothing count
   if (currentSmoothingCount >= currentSmoothingSetting) {
-    currentSmoothingCount =
-        0; // if current smoothing count is higher than max, reset to 0
+    currentSmoothingCount = 0; // if current smoothing count is higher than max, reset to 0
   }
   // Now back to the current calculations:
   tempCurrent = 0; // reset temp current to receive sum of array values
   for (int i = 0; i < currentSmoothingSetting; i++) {
-    tempCurrent += currentSmoothingArray[i]; // sum all values in the current
-                                             // smoothing array
+    tempCurrent += currentSmoothingArray[i]; // sum all values in the current smoothing array
   }
-  tempCurrent = tempCurrent / currentSmoothingSetting; // divide summed value by number of
-                                                       // samples to get mean
+  tempCurrent = tempCurrent / currentSmoothingSetting; // divide summed value by number of samples to get mean
   return (tempCurrent);                                // return the final smoothed value
 }
 
@@ -326,12 +325,13 @@ float readCurrent() {
  */
 float readThrottle() {
   static int currThrtlOut = 0;
-  float tempThrottle = analogRead(THROTTLE_IN_PIN);
+  float rawThrottle = hardwareAnalogReadOversampled(THROTTLE_IN_PIN);
+  float tempThrottle = 0;
 
   if (CAL_THROTTLE_VARIABLE) // Analogue throttleOutput, not push button
   {
-    tempThrottle = (tempThrottle / 1023) * referenceVoltage; // Gives the actual voltage seen on the arduino Pin
-    throttleV = tempThrottle;                                // Update Global variable for throttleOutput in voltage
+    tempThrottle = adcToPinVoltage(rawThrottle); // Gives the actual voltage seen on the arduino Pin
+    throttleV = tempThrottle;                    // Update Global variable for throttleOutput in voltage
 
     // The following code adds dead bands to the start and end of the
     // throttleOutput travel
@@ -345,8 +345,8 @@ float readThrottle() {
 
     tempThrottle = ((tempThrottle - CAL_THROTTLE_LOW) / (float)(CAL_THROTTLE_HIGH - CAL_THROTTLE_LOW)) * (255);
   } else {
-    throttleV = (tempThrottle / 1023) * referenceVoltage; // Update Global variable for throttleOutput in voltage
-    if (tempThrottle > 200)                               // Approx 1v
+    throttleV = adcToPinVoltage(rawThrottle); // Update Global variable for throttleOutput in voltage
+    if (rawThrottle > 200)                    // Approx 1v
     {
       tempThrottle = 255; // full throttleOutput
     } else {
@@ -393,7 +393,7 @@ float readThrottle() {
  * @return The temperature in Celsius.
  */
 float readTempOne() {
-  float temp = thermistorADCToCelcius(analogRead(TEMP1_IN_PIN), 1); // use the thermistor function to turn the ADC reading into a temperature
+  float temp = thermistorADCToCelcius(hardwareAnalogReadOversampled(TEMP1_IN_PIN), 1); // use the thermistor function to turn the ADC reading into a temperature
   return (temp);                                                    // return Temperature.
 }
 
@@ -402,7 +402,7 @@ float readTempOne() {
  * @return The temperature in Celsius.
  */
 float readTempTwo() {
-  float temp = thermistorADCToCelcius(analogRead(TEMP2_IN_PIN), 2);
+  float temp = thermistorADCToCelcius(hardwareAnalogReadOversampled(TEMP2_IN_PIN), 2);
   return (temp);
 }
 
@@ -541,7 +541,7 @@ float calculateGearRatio() {
  * @return The calculated temperature in Celsius.
  * @see http://playground.arduino.cc/ComponentLib/Thermistor2
  */
-float thermistorADCToCelcius(int rawADC, uint8_t thermNumber) {
+float thermistorADCToCelcius(float rawADC, uint8_t thermNumber) {
 
   // If no sensor is plugged in, rawADC reading will be close to 1023, so return 0.
   if (rawADC > 1000)
@@ -571,7 +571,11 @@ float thermistorADCToCelcius(int rawADC, uint8_t thermNumber) {
   // R2 = (R1 V2)/(V1-V2) As the ADC values are our readings of the voltage, we can
   // substitute V_in with 1024 and V_out with the reading taken from the ADC, which
   // is passed into this function as rawADC This makes the calculation:
-  float thermistorResistance = ((float)FIXED_RESISTOR_VALUE * (float)rawADC) / ((float)1023 - (float)rawADC);
+  // The divider is fed from the same rail the ADC references, so this is
+  // ratiometric: the rail voltage cancels out and only the ratio matters. Half
+  // an LSB is added for the same reason as in adcToPinVoltage().
+  float correctedADC = rawADC + 0.5;
+  float thermistorResistance = ((float)FIXED_RESISTOR_VALUE * correctedADC) / (1024.0 - correctedADC);
   // Next, you'll notice that the log natural (ln) of this resistance needs to
   // be calculated 4 times in the Steinhart-Hart equation. This is a complex and
   // long calculation for the arduino. As such it is efficient to do it once and

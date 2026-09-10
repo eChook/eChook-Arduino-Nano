@@ -40,6 +40,20 @@ float hardwareReadTempInternal();
 float hardwareUpdateReferenceVoltage();
 
 /**
+ * @brief Read an analog input, oversampling to reduce noise.
+ *
+ * Returns a float on the same 0-1023 scale as analogRead(). Averaging retains
+ * resolution below a single LSB wherever the signal carries enough noise to
+ * dither it, which on a moving car it invariably does. A throwaway conversion
+ * is taken first so the mux and sample capacitor have settled before the
+ * samples that count.
+ *
+ * @param pin The analog pin to read.
+ * @return The averaged reading, on the 0-1023 scale.
+ */
+float hardwareAnalogReadOversampled(uint8_t pin);
+
+/**
  * @brief Write hardware-specific configuration data to the Serial port.
  * @param identifier The data identifier
  * @param dataByte1 First byte of data

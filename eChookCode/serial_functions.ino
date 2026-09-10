@@ -7,7 +7,7 @@
  * configuration website, including getting and setting calibration data.
  */
 
-// V2.5+ Protocol Constants
+// V2+ Protocol Constants
 #define PKT_VERSION_REQ 0x01
 #define PKT_VERSION_RESP 0x81
 #define PKT_FLOAT_REQ 0x02
@@ -33,7 +33,7 @@ void SerialCheck() {
   if (Serial.available()) {
     char temp = Serial.read();
 
-    // V2.5+ Protocol Sync Byte
+    // V2+ Protocol Sync Byte
     if ((uint8_t)temp == 0xAA) {
       receiveV25Packet();
       return;
@@ -291,7 +291,7 @@ void receiveBinaryCal() {
  */
 void resetArduino() { asm volatile("jmp 0x7800"); }
 
-// --- V2.5+ Protocol Implementation ---
+// --- V2+ Protocol Implementation ---
 
 void sendV25Packet(uint8_t type, const uint8_t *data, uint8_t len) {
   uint8_t checksum = type ^ len;

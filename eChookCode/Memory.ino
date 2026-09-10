@@ -54,8 +54,8 @@
 // Code:
 #include <EEPROM.h>
 
-#define EEPROM_USED_SIZE 125 // Total bytes used for config, floats, BT name, etc.
-#define CHECKSUM_BYTE 0      // Store checksum in EEPROM[0]
+#define EEPROM_USED_SIZE 125 // EEPROM indices 0 to 124 reserved by this schema.
+#define CHECKSUM_BYTE 124    // Store checksum at end of reserved block (separate from verification byte).
 
 // Calibration Bit Definitions:
 // Reading bits in bytes requires some binary logic
@@ -112,9 +112,12 @@ void EEPROMSetup()
 
     if (!FORCE_USE_HARDCODED_CAL)
     {
+        uint8_t eepromWasValid = 0;
+
         // First check if EEPROM is valid by reading the validity Byte [0]
         if (getVerificationByte())
         {
+            eepromWasValid = 1;
             // EEPROM contains valid data
             // Set calibration values from EEPROM
             loadEepromCalibration();
@@ -124,6 +127,8 @@ void EEPROMSetup()
             // Fresh arduino, need to initialise EEPROM
             saveCurrCalToEeprom();
         }
+
+        logEEPROMStartupStatus(eepromWasValid);
     }
 }
 
@@ -338,7 +343,7 @@ byte getNameByte(uint8_t index)
  */
 uint8_t getVerificationByte()
 {
-    byte temp = EEPROM.read(0);
+    byte temp = EEPROM.read(VERIFICATION_BYTE);
     return temp == 0xAA;
 }
 
@@ -347,7 +352,7 @@ uint8_t getVerificationByte()
  */
 void setVerificationByte()
 {
-    EEPROM.write(0, 0xAA);
+    EEPROM.write(VERIFICATION_BYTE, 0xAA);
 }
 
 /**
@@ -355,7 +360,7 @@ void setVerificationByte()
  */
 void clearVerificationByte()
 {
-    EEPROM.write(0, 0xFF);
+    EEPROM.write(VERIFICATION_BYTE, 0xFF);
 }
 
 /**
@@ -373,7 +378,11 @@ void writeBTName()
     //     EEPROM.write(i, 0xff);
     // }
 
-    char buff[30] = {0xff};
+    char buff[30];
+    for (uint8_t i = 0; i < 30; i++)
+    {
+        buff[i] = (char)0xFF;
+    }
     CAL_BT_NAME.toCharArray(buff, 30);
     // Serial.println(buff);
 
@@ -393,8 +402,10 @@ void getBTName()
     for (uint8_t i = 0; i < 30; i++)
     {
         char tmpChar = getNameByte(i);
-        if (tmpChar != 0xff)
+        if (tmpChar != 0xff && tmpChar != '\0')
+        {
             temp += tmpChar;
+        }
     }
     CAL_BT_NAME = temp;
 }
@@ -406,8 +417,12 @@ void getBTName()
  */
 uint8_t calculateEEPROMChecksum() {
     uint8_t checksum = 0;
-    for (uint8_t i = 1; i < EEPROM_USED_SIZE; i++) { // Start from 1, skip checksum byte
-        checksum += EEPROM.read(i);
+    for (uint8_t i = 1; i < EEPROM_USED_SIZE; i++) {
+        // Skip checksum location so verify compares stored byte against a pure data checksum.
+        if (i != CHECKSUM_BYTE)
+        {
+            checksum += EEPROM.read(i);
+        }
     }
     return checksum;
 }
@@ -428,4 +443,26 @@ bool verifyEEPROMChecksum() {
     uint8_t stored = EEPROM.read(CHECKSUM_BYTE);
     uint8_t calculated = calculateEEPROMChecksum();
     return stored == calculated;
+}
+
+/**
+ * @brief Logs EEPROM startup state and loaded Bluetooth name on supported boards.
+ * @param eepromWasValid 1 if EEPROM marker was valid at boot, otherwise 0.
+ */
+void logEEPROMStartupStatus(uint8_t eepromWasValid)
+{
+#ifdef NANO_EVERY
+    Serial.print(F("EEPROM valid at boot: "));
+    if (eepromWasValid)
+    {
+        Serial.println(F("YES"));
+    }
+    else
+    {
+        Serial.println(F("NO (defaults re-written)"));
+    }
+
+    Serial.print(F("Loaded BT name: "));
+    Serial.println(CAL_BT_NAME);
+#endif
 }

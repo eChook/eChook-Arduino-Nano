@@ -146,7 +146,7 @@ void receiveBTName() {
   if (!timeout) {
     String temp = "";
     for (uint8_t i = 0; i < 30; i++) {
-      if (inBuff[i] != 0xff) {
+      if (inBuff[i] != 0xff && inBuff[i] != '\0') {
         temp += inBuff[i];
       }
     }

@@ -132,9 +132,7 @@ void receiveBTName() {
   char inBuff[30] = {};
   uint8_t timeout = 0;
 
-  while (receivedCount < 30)
-  // while (receivedCount < 30 || !timeout)
-  {
+  while (receivedCount < 30 && !timeout) {
     timeout = menuTimeout(entryTime);
 
     if (Serial.available()) {
@@ -143,7 +141,7 @@ void receiveBTName() {
     }
   }
 
-  if (!timeout) {
+  if (receivedCount == 30) {
     String temp = "";
     for (uint8_t i = 0; i < 30; i++) {
       if (inBuff[i] != 0xff) {
@@ -165,9 +163,7 @@ void receiveFloatCal() {
   char inBuff[80] = {};
   uint8_t timeout = 0;
 
-  while (receivedCount < 80)
-  // while (receivedCount < 30 || !timeout)
-  {
+  while (receivedCount < 80 && !timeout) {
     timeout = menuTimeout(entryTime);
 
     if (Serial.available()) {
@@ -177,7 +173,7 @@ void receiveFloatCal() {
     }
   }
 
-  if (!timeout) {
+  if (receivedCount == 80) {
     EEPROM.put(FLOAT_ARRAY_START, inBuff);
 
     loadEepromCalibration();  // Reloads dynamic calibration from EEPROM
@@ -191,9 +187,7 @@ void receiveBinaryCal() {
   char inBuff[4] = {};
   uint8_t timeout = 0;
 
-  while (receivedCount < 4)
-  // while (receivedCount < 30 || !timeout)
-  {
+  while (receivedCount < 4 && !timeout) {
     timeout = menuTimeout(entryTime);
 
     if (Serial.available()) {
@@ -203,7 +197,7 @@ void receiveBinaryCal() {
     }
   }
 
-  if (!timeout) {
+  if (receivedCount == 4) {
     EEPROM.put(CAL_A, inBuff);
 
     loadEepromCalibration();  // Reloads dynamic calibration from EEPROM

@@ -244,8 +244,7 @@ void buttonChecks() {
 }
 
 /**
- * @brief Updates and returns the reference voltage for ADC calculations. Only
- * works on ATMEGA328 based boards.
+ * @brief Updates and returns the reference voltage for ADC calculations.
  * @return The calculated reference voltage.
  */
 float updateReferenceVoltage() {

@@ -57,8 +57,6 @@ extern float throttleV;
 extern float current;
 /** @brief Most recently calculated motor RPM. */
 extern float motorRPM;
-/** @brief Most recently calculated wheel RPM. Stored globally for gear ratio calculations. */
-extern float wheelRPM;
 /** @brief Most recently calculated wheel speed (m/s). */
 extern float wheelSpeed;
 /** @brief Most recently calculated gear ratio (Motor RPM / Wheel RPM). */
@@ -102,27 +100,78 @@ extern float currentSmoothingArray[];
 extern uint8_t currentSmoothingCount;
 
 // ISR Wheel and Motor Speed Variables
+/** @brief Motor pulse debounce floor, in microseconds. A floor on the gap between
+ *  pulses, so it sets a ceiling of 500 pulses/sec - 30k RPM with one magnet, and
+ *  proportionally less with more. */
+constexpr unsigned long motorDebounceUs = 2000;
+/** @brief Wheel pulse debounce floor, in microseconds - a ceiling of 100 pulses/sec. */
+constexpr unsigned long wheelDebounceUs = 10000;
+/** @brief Quiet period after which the motor is read as stopped, in microseconds. The
+ *  motor spins far faster than the wheel, so one second of quiet is plenty. */
+constexpr unsigned long motorTimeoutUs = 1000000;
+/** @brief Quiet period after which the wheel is read as stopped, in microseconds. Longer
+ *  than the motor's, since a slow-rolling wheel with one magnet can legitimately go
+ *  seconds between pulses. */
+constexpr unsigned long wheelTimeoutUs = 3000000;
+
 /** @brief Timestamp of the last motor pulse interrupt (microseconds). */
 extern volatile unsigned long lastMotorPollTime;
-/** @brief Time interval between the two most recent motor pulses (microseconds). */
-extern volatile unsigned long lastMotorInterval;
 /** @brief Timestamp of the last wheel pulse interrupt (microseconds). */
 extern volatile unsigned long lastWheelPollTime;
-/** @brief Time interval between the two most recent wheel pulses (microseconds). */
-extern volatile unsigned long lastWheelInterval;
-/** @brief Flag set by wheel interrupt indicating a new pulse has been processed. */
-extern volatile bool newSpeedSignal;
-/** @brief Flag set by motor interrupt indicating a new pulse has been processed. */
-extern volatile bool newMotorSignal;
+/** @brief Total of all accepted motor intervals since the last read, in microseconds.
+ *  Accumulated in the ISR so every pulse contributes, not just the most recent. */
+extern volatile unsigned long motorAccumUs;
+/** @brief Number of accepted motor pulses making up motorAccumUs. */
+extern volatile uint16_t motorPulseCount;
+/** @brief Total of all accepted wheel intervals since the last read, in microseconds. */
+extern volatile unsigned long wheelAccumUs;
+/** @brief Number of accepted wheel pulses making up wheelAccumUs. */
+extern volatile uint16_t wheelPulseCount;
 
 // Smoothing for RPM and Speed
-/** @brief Array size for RPM and speed moving averages. */
-extern const int smoothingSize;
-/** @brief Buffer for motor RPM moving average. */
-extern float motorRPMSmoothing[];
-/** @brief Index for the next motor RPM sample in the smoothing buffer. */
-extern int motorSmoothingIndex;
-/** @brief Buffer for wheel speed moving average. */
-extern float wheelSpeedSmoothing[];
-/** @brief Index for the next wheel speed sample in the smoothing buffer. */
-extern int wheelSmoothingIndex;
+/** @brief Number of read windows a moving average can hold.
+ *  Defined here rather than in Globals.cpp so that it is a compile-time constant at
+ *  every use site: the ring index wraps with % smoothingSize, and an extern const would
+ *  leave that as a real runtime division on a core with no divide instruction. */
+constexpr uint8_t smoothingSize = 4;
+/** @brief Longest stretch of time a moving average may span, in microseconds.
+ *  With one magnet each pulse is a whole revolution, so at low speed a pulse-counted
+ *  window stretches a long way - four revolutions from rest span over two seconds, and
+ *  the reported speed becomes an average of history rather than of now. Bounding the
+ *  span keeps the average responsive when the car is slow and still accelerating, which
+ *  is exactly where a standing start lives.
+ *
+ *  This is a responsiveness bound, deliberately independent of the two other numbers it
+ *  interacts with: CAL_DATA_TRANSMIT_INTERVAL sets how often a window is closed, and
+ *  smoothingSize only caps how many windows can be held. At the default 100ms interval
+ *  four windows span 400ms, so the bound rarely binds at speed; a longer interval makes
+ *  it bind sooner, which is the intent - the average still covers at most this much real
+ *  time however the other two are set. See updatePulseAverage(). */
+constexpr unsigned long smoothingWindowUs = 500000;
+
+/** @brief Moving average for one pulse-counted channel - the wheel or the motor.
+ *
+ *  Each slot pairs the pulses counted in one read window with the microseconds those
+ *  pulses spanned. Averaging sums both and divides, giving revolutions over elapsed time
+ *  - the true mean. Averaging per-window rates instead would average reciprocals and
+ *  bias the result high whenever the intervals vary.
+ *
+ *  The wheel and the motor are the same measurement problem and share one implementation;
+ *  see updatePulseAverage() in eChook_Functions.ino. */
+struct PulseAverage {
+  /** @brief Microseconds spanned by each stored read window. */
+  unsigned long windowUs[smoothingSize];
+  /** @brief Pulses counted in each stored read window. */
+  uint16_t windowPulses[smoothingSize];
+  /** @brief Slot the next window will be written to. */
+  uint8_t index;
+  /** @brief Windows actually stored, up to smoothingSize. */
+  uint8_t count;
+  /** @brief Latest averaged rate in revolutions per second, held between pulses. */
+  float revsPerSec;
+};
+
+/** @brief Moving average state for the motor shaft sensor. */
+extern PulseAverage motorPulseAvg;
+/** @brief Moving average state for the wheel sensor. */
+extern PulseAverage wheelPulseAvg;

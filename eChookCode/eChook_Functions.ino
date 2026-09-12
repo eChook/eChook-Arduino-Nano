@@ -394,7 +394,7 @@ float readThrottle() {
  */
 float readTempOne() {
   float temp = thermistorADCToCelcius(hardwareAnalogReadOversampled(TEMP1_IN_PIN), 1); // use the thermistor function to turn the ADC reading into a temperature
-  return (temp);                                                    // return Temperature.
+  return (temp);                                                                       // return Temperature.
 }
 
 /**
@@ -419,6 +419,111 @@ float readTempInternal(void) {
 }
 
 /**
+ * @brief Folds one read window into a channel's moving average and returns its rate.
+ *
+ * The wheel and the motor are the same measurement problem - count pulses, divide by the
+ * time they spanned - differing only in how long the sensor may go quiet before the
+ * reading is abandoned and in how many pulses make a revolution. One implementation means
+ * the averaging policy is stated once; the callers add nothing but their own unit.
+ *
+ * @param avg Moving average state for this channel.
+ * @param lastPollTime ISR timestamp of the most recent accepted pulse.
+ * @param accumUs ISR total of accepted intervals; cleared by this call.
+ * @param pulseCount ISR count of accepted pulses; cleared by this call.
+ * @param timeoutUs Quiet period after which the channel reads zero.
+ * @param magnets Pulses per revolution.
+ * @return Rate in revolutions per second.
+ */
+static float updatePulseAverage(PulseAverage &avg, volatile unsigned long &lastPollTime,
+                                volatile unsigned long &accumUs, volatile uint16_t &pulseCount,
+                                unsigned long timeoutUs, int magnets) {
+  // Take a single consistent snapshot of everything the ISR writes, so the pulse
+  // timestamp and the totals that go with it cannot be from different pulses. The
+  // accumulators are cleared here so the next window starts from empty.
+  unsigned long pollTime, windowUs;
+  uint16_t pulses;
+  noInterrupts();
+  pollTime = lastPollTime;
+  windowUs = accumUs;
+  pulses = pulseCount;
+  accumUs = 0;
+  pulseCount = 0;
+  interrupts();
+
+  unsigned long timeSinceLast = micros() - pollTime; // Handles wrap-around automatically
+
+  if (timeSinceLast > timeoutUs) {
+    // Discard the buffer. Zeroing the count is enough - nothing reads a slot beyond the
+    // count, so the stale windows are never averaged in.
+    avg.count = 0;
+    avg.revsPerSec = 0;
+    return 0;
+  }
+
+  if (pulses > 0) {
+    avg.windowUs[avg.index] = windowUs;
+    avg.windowPulses[avg.index] = pulses;
+    avg.index = (uint8_t)((avg.index + 1) % smoothingSize);
+    if (avg.count < smoothingSize)
+      avg.count++;
+
+    // The window just stored is always counted. It is the only one describing the
+    // present, and starting from it keeps the divisor non-zero even when it is itself
+    // long enough that the span bound would otherwise throw it out.
+    unsigned long totalUs = windowUs;
+    uint16_t totalPulses = pulses;
+
+    // Older windows are then taken newest-first, while the running total stays inside
+    // the bound. Consecutive windows abut - each one's intervals are measured from the
+    // end of the one before - so the total is exactly how far back the average reaches,
+    // and the first window that would push it past the bound ends the walk. Starting at
+    // n = 1 skips the slot just written, which the totals already hold.
+    //
+    // Bounding the span rather than each window's age is what stops one long window from
+    // dominating. The first pulse after a stop carries the whole standstill as its
+    // interval, and because the average is weighted by time it would otherwise swamp
+    // every later window until it aged out: pulling away after a 2.5s pause would read a
+    // tenth of the real speed.
+    for (uint8_t n = 1; n < avg.count; n++) {
+      uint8_t slot = (uint8_t)((avg.index + smoothingSize - 1 - n) % smoothingSize);
+      if (totalUs + avg.windowUs[slot] > smoothingWindowUs)
+        break;
+      totalUs += avg.windowUs[slot];
+      totalPulses = (uint16_t)(totalPulses + avg.windowPulses[slot]);
+    }
+
+    // Revolutions over the time they took. Every pulse in the span contributes, and
+    // because this divides summed revolutions by summed time rather than averaging
+    // individual rates, it carries none of the upward bias that averaging reciprocals
+    // would.
+    avg.revsPerSec = ((float)totalPulses * 1000000.0) / ((float)totalUs * magnets);
+  }
+
+  // Decay between pulses. If the next pulse is overdue the shaft cannot still be turning
+  // at the last measured rate, so cap the output at the fastest rate still consistent
+  // with no pulse having arrived. Without this the last value is held flat until the
+  // timeout and then drops straight to zero - braking from speed would report no change
+  // at all for up to three seconds.
+  //
+  // The bound is one whole revolution in timeSinceLast, not one magnet spacing. Spacing
+  // is the one thing the board cannot know: magnets are placed by hand, and two of them
+  // can sit most of a revolution apart. A per-magnet bound reads that long gap as a late
+  // pulse and claws the value down during perfectly steady running - two magnets at a
+  // 30/70 split under-report a constant 5m/s by a fifth. No gap between magnets can
+  // exceed a revolution, so a whole-revolution bound cannot false-trigger whatever the
+  // spacing. It is identical to the per-magnet bound for the recommended single magnet,
+  // and having no false triggers to suppress it needs no jitter margin, so the decay
+  // starts from the first late read.
+  // Compare via cross-multiplication first so the divide (soft-float on AVR) only runs
+  // in the rare branch that's actually overdue, instead of on every call.
+  if (timeSinceLast > 0 && avg.revsPerSec * (float)timeSinceLast > 1000000.0) {
+    avg.revsPerSec = 1000000.0 / (float)timeSinceLast;
+  }
+
+  return avg.revsPerSec;
+}
+
+/**
  * @brief Calculates and returns the wheel speed.
  * @return The wheel speed in meters per second.
  */
@@ -426,46 +531,9 @@ float readWheelSpeed() {
   if (CAL_WHEEL_MAGNETS == 0)
     return 0;
 
-  // Timeout logic: if no pulse for 3 seconds, speed is 0
-  unsigned long timeSinceLast;
-  noInterrupts();
-  timeSinceLast = micros() - lastWheelPollTime; // Handle wrap-around automatically
-  interrupts();
-
-  if (timeSinceLast > 3000000) {
-    wheelSpeed = 0;
-    // Reset smoothing buffer
-    for (int i = 0; i < smoothingSize; i++)
-      wheelSpeedSmoothing[i] = 0;
-    return 0;
-  }
-
-  noInterrupts();
-  bool speedSignal = newSpeedSignal;
-  unsigned long interval = lastWheelInterval;
-  newSpeedSignal = false;
-  interrupts();
-
-  if (speedSignal) {
-    if (interval > 0) {
-      // Calculate instantaneous Speed in m/s
-      // Interval is in micros.
-      // RPS = 1,000,000 / (interval * magnets)
-      float wheelRPS = 1000000.0 / ((float)(interval * CAL_WHEEL_MAGNETS));
-      float instantaneousSpeed = wheelRPS * CAL_WHEEL_CIRCUMFERENCE;
-
-      // Add to smoothing buffer
-      wheelSpeedSmoothing[wheelSmoothingIndex] = instantaneousSpeed;
-      wheelSmoothingIndex = (wheelSmoothingIndex + 1) % smoothingSize;
-
-      // Calculate average
-      float sum = 0;
-      for (int i = 0; i < smoothingSize; i++)
-        sum += wheelSpeedSmoothing[i];
-      wheelSpeed = sum / smoothingSize;
-    }
-  }
-
+  wheelSpeed = updatePulseAverage(wheelPulseAvg, lastWheelPollTime, wheelAccumUs, wheelPulseCount,
+                                  wheelTimeoutUs, CAL_WHEEL_MAGNETS) *
+               CAL_WHEEL_CIRCUMFERENCE;
   return wheelSpeed;
 }
 
@@ -477,44 +545,9 @@ float readMotorRPM() {
   if (CAL_MOTOR_MAGNETS == 0)
     return 0;
 
-  // Timeout logic: if no pulse for 1 second, RPM is 0
-  unsigned long timeSinceLast;
-  noInterrupts();
-  timeSinceLast = micros() - lastMotorPollTime;
-  interrupts();
-
-  if (timeSinceLast > 1000000) {
-    motorRPM = 0;
-    // Reset smoothing buffer
-    for (int i = 0; i < smoothingSize; i++)
-      motorRPMSmoothing[i] = 0;
-    return 0;
-  }
-
-  noInterrupts();
-  bool motorSignal = newMotorSignal;
-  unsigned long interval = lastMotorInterval;
-  newMotorSignal = false;
-  interrupts();
-
-  if (motorSignal) {
-    if (interval > 0) {
-      // Calculate instantaneous RPM
-      // RPM = (1,000,000 / (interval * magnets)) * 60
-      float instantaneousRPM = (60000000.0 / ((float)(interval * CAL_MOTOR_MAGNETS)));
-
-      // Add to smoothing buffer
-      motorRPMSmoothing[motorSmoothingIndex] = instantaneousRPM;
-      motorSmoothingIndex = (motorSmoothingIndex + 1) % smoothingSize;
-
-      // Calculate average
-      float sum = 0;
-      for (int i = 0; i < smoothingSize; i++)
-        sum += motorRPMSmoothing[i];
-      motorRPM = sum / smoothingSize;
-    }
-  }
-
+  motorRPM = updatePulseAverage(motorPulseAvg, lastMotorPollTime, motorAccumUs, motorPulseCount,
+                                motorTimeoutUs, CAL_MOTOR_MAGNETS) *
+             60.0;
   return motorRPM;
 }
 
@@ -523,11 +556,14 @@ float readMotorRPM() {
  * @return The calculated gear ratio.
  */
 float calculateGearRatio() {
-  float tempGearRatio = 0;
-  if (wheelRPM) {
-    tempGearRatio = motorRPM / wheelRPM;
-  }
-  return (tempGearRatio);
+  // Both channels are averaged in revolutions per second, so the ratio is taken before
+  // either is converted to its transmitted unit - the factor of 60 that would turn each
+  // into RPM cancels. Going via a stored wheel RPM instead meant dividing out the
+  // circumference readWheelSpeed() had just multiplied in, and keeping a third value in
+  // step with the other two.
+  if (wheelPulseAvg.revsPerSec <= 0)
+    return 0;
+  return motorPulseAvg.revsPerSec / wheelPulseAvg.revsPerSec;
 }
 
 /**

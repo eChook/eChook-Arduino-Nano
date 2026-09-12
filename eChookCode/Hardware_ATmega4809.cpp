@@ -33,18 +33,26 @@ void hardwareAttachInterrupts() {
   // Wheel speed is on Pin 3 -> PF5
 
   // 1. Configure Event System Generators
+  //
+  // The PORT0_/PORT1_ generator names are relative to the channel, not absolute
+  // ports. Each pair of channels can only see one pair of ports:
+  //   CHANNEL0/1 -> PORT0 = PORTA, PORT1 = PORTB
+  //   CHANNEL2/3 -> PORT0 = PORTC, PORT1 = PORTD
+  //   CHANNEL4/5 -> PORT0 = PORTE, PORT1 = PORTF
+  // So PA0 has to come from channel 0 or 1, and PF5 from channel 4 or 5.
+
   // Route Port A, Pin 0 (Motor) to EVSYS Channel 0
   EVSYS.CHANNEL0 = EVSYS_GENERATOR_PORT0_PIN0_gc;
 
-  // Route Port F, Pin 5 (Wheel) to EVSYS Channel 1
-  EVSYS.CHANNEL1 = EVSYS_GENERATOR_PORT1_PIN5_gc;
+  // Route Port F, Pin 5 (Wheel) to EVSYS Channel 4
+  EVSYS.CHANNEL4 = EVSYS_GENERATOR_PORT1_PIN5_gc;
 
   // 2. Configure Event System Users (The Timers)
   // Connect TCB0 (Motor) to Event Channel 0
   EVSYS.USERTCB0 = EVSYS_CHANNEL_CHANNEL0_gc;
 
-  // Connect TCB1 (Wheel) to Event Channel 1
-  EVSYS.USERTCB1 = EVSYS_CHANNEL_CHANNEL1_gc;
+  // Connect TCB1 (Wheel) to Event Channel 4
+  EVSYS.USERTCB1 = EVSYS_CHANNEL_CHANNEL4_gc;
 
   // 3. Configure Timer B 0 (Motor)
   TCB0.CTRLB = TCB_CNTMODE_FRQ_gc;                   // Frequency/Pulse measurement mode
@@ -58,8 +66,11 @@ void hardwareAttachInterrupts() {
 
   // 5. Normal Interrupts
   // We still attach the standard interrupts. The ISR will read the TCB hardware registers.
-  attachInterrupt(2, motorSpeedISR, RISING);
-  attachInterrupt(3, wheelSpeedISR, RISING);
+  // Named constants rather than literals: the EVSYS generators above and these calls
+  // have to agree about which pin each sensor is on, and a literal here would keep
+  // pointing at the old pin if Pinout.h ever changed.
+  attachInterrupt(MOTOR_RPM_PIN, motorSpeedISR, RISING);
+  attachInterrupt(WHEEL_RPM_PIN, wheelSpeedISR, RISING);
 }
 
 /*

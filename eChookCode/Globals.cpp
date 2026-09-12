@@ -35,7 +35,6 @@ float throttleIn = 0;
 float throttleV = 0;
 float current = 0;
 float motorRPM = 0;
-float wheelRPM = 0;
 float wheelSpeed = 0;
 float gearRatio = 0;
 float tempOne = 0;
@@ -53,14 +52,11 @@ float currentSmoothingArray[currentSmoothingSetting];
 uint8_t currentSmoothingCount = 0;
 
 volatile unsigned long lastMotorPollTime = 0;
-volatile unsigned long lastMotorInterval = 0;
 volatile unsigned long lastWheelPollTime = 0;
-volatile unsigned long lastWheelInterval = 0;
-volatile bool newSpeedSignal = 0;
-volatile bool newMotorSignal = 0;
+volatile unsigned long motorAccumUs = 0;
+volatile uint16_t motorPulseCount = 0;
+volatile unsigned long wheelAccumUs = 0;
+volatile uint16_t wheelPulseCount = 0;
 
-const int smoothingSize = 4;
-float motorRPMSmoothing[smoothingSize];
-int motorSmoothingIndex = 0;
-float wheelSpeedSmoothing[smoothingSize];
-int wheelSmoothingIndex = 0;
+PulseAverage motorPulseAvg;
+PulseAverage wheelPulseAvg;

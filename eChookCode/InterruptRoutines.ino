@@ -6,6 +6,21 @@
  * best practice is kept by keeping these routines as short as possible.
  */
 
+#if defined(__AVR_ATmega4809__)
+// Ticks captured on edges the debounce rejected.
+//
+// TCB captures and restarts its counter on every active edge, including ones the
+// debounce goes on to reject. Without carrying those ticks forward the next accepted
+// pulse measures from the bounce rather than from the last accepted edge, so the
+// interval always comes back short and the speed always reads high - by up to the
+// width of the debounce window as a fraction of the period (around 9% for the motor
+// at 3000rpm, 8% for the wheel at 10m/s).
+//
+// These are only ever touched inside the ISR, so they do not need to be volatile.
+static uint16_t motorPendingTicks = 0;
+static uint16_t wheelPendingTicks = 0;
+#endif
+
 /**
  * @brief ISR for motor speed hall effect sensor.
  * Triggered on rising edge of pulses from the motor shaft.
@@ -21,7 +36,9 @@ void motorSpeedISR() {
   //    overflow counting messy.
   // Solution: We use TCB for perfect cycle-accurate microsecond stamping of the pulse, and
   // software micros() to track the massive 262ms wrap-around epochs.
-  uint16_t exactHardwareTicks = TCB0.CCMP;
+  // Any ticks carried over from rejected edges are added back in here. The uint16_t
+  // arithmetic wraps, which is exactly the mod-65536 the wrap logic below expects.
+  uint16_t exactHardwareTicks = motorPendingTicks + TCB0.CCMP;
 
   // Calculate the time elapsed in micros according to the software clock
   unsigned long softwareInterval = now - lastMotorPollTime;
@@ -47,12 +64,21 @@ void motorSpeedISR() {
   unsigned long interval = now - lastMotorPollTime;
 #endif
 
-  if (interval > 2000) // Debounce 2ms (Max 30k RPM)
-  {
-    lastMotorInterval = interval;
+  bool accepted = interval > motorDebounceUs;
+
+  if (accepted) {
     lastMotorPollTime = now;
-    newMotorSignal = true;
+    // Accumulate rather than overwrite, so a read that spans several pulses sees all
+    // of them instead of only the last one.
+    motorAccumUs += interval;
+    motorPulseCount++;
   }
+#if defined(__AVR_ATmega4809__)
+  // On accept the next measurement starts from this edge. On a rejected bounce the
+  // hardware counter has already restarted, so keep the ticks and the next accepted
+  // pulse still measures from the last accepted edge.
+  motorPendingTicks = accepted ? 0 : exactHardwareTicks;
+#endif
 }
 
 /**
@@ -65,7 +91,8 @@ void wheelSpeedISR() {
 #if defined(__AVR_ATmega4809__)
   // Read exact tick count from Timer B 1 (Hardware captured on rising edge via EVSYS)
   // See previous ISR for implementation resaoning
-  uint16_t exactHardwareTicks = TCB1.CCMP;
+  // Ticks carried over from rejected edges added back in - see motorSpeedISR()
+  uint16_t exactHardwareTicks = wheelPendingTicks + TCB1.CCMP;
 
   // Calculate the time elapsed in micros according to the software clock
   unsigned long softwareInterval = now - lastWheelPollTime;
@@ -90,10 +117,16 @@ void wheelSpeedISR() {
   unsigned long interval = now - lastWheelPollTime;
 #endif
 
-  if (interval > 10000) // Debounce 10ms (Max 100 RPS / 6000 RPM approx)
-  {
-    lastWheelInterval = interval;
+  bool accepted = interval > wheelDebounceUs;
+
+  if (accepted) {
     lastWheelPollTime = now;
-    newSpeedSignal = true;
+    // Accumulate rather than overwrite - see motorSpeedISR()
+    wheelAccumUs += interval;
+    wheelPulseCount++;
   }
+#if defined(__AVR_ATmega4809__)
+  // Zero on accept, carry forward on reject - see motorSpeedISR()
+  wheelPendingTicks = accepted ? 0 : exactHardwareTicks;
+#endif
 }

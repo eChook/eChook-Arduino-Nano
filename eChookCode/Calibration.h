@@ -35,9 +35,11 @@ extern long CAL_BT_BAUDRATE; // Baud Rate to run at. Must match Arduino's baud r
 extern unsigned long CAL_DATA_TRANSMIT_INTERVAL; // transmit interval in ms
 
 // Car Specific Settings
-/** @brief Number of magnets mounted on the wheel for speed sensing. */
+/** @brief Number of magnets mounted on the wheel for speed sensing. One is recommended:
+ *  the timing is measured per pulse, so a single magnet makes every interval exactly one
+ *  revolution and removes any error from uneven magnet spacing. */
 extern int CAL_WHEEL_MAGNETS; // Number of magnets on wheel
-/** @brief Number of magnets on the motor shaft for RPM sensing. */
+/** @brief Number of magnets on the motor shaft for RPM sensing. One is recommended, as above. */
 extern int CAL_MOTOR_MAGNETS; // Number of magnets on motor shaft for hall effect sensor
 /** @brief Outer circumference of the tyre in meters. Used for speed calculation. */
 extern float CAL_WHEEL_CIRCUMFERENCE; // Outer circumference of tyre, in Meters. i.e. the distance travelled in one revolution

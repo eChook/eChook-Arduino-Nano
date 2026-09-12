@@ -10,10 +10,17 @@
  */
 
 /**
- * @brief The version of the code running on the board.
+ * @brief The version of the code running on the board, as major.minor.patch.
  * Used to check compatibility with the online configuration editor.
+ *
+ * This was previously a single float, where 2.043 meant 2.4.3. The patch digit
+ * could not survive the two-decimal-place formatting used on the wire, so it
+ * never reached the configurator. The three components are now kept separate
+ * and sent as raw bytes in the V2 version packet.
  */
-#define CODE_VERSION 2.05
+#define CODE_VERSION_MAJOR 2
+#define CODE_VERSION_MINOR 5
+#define CODE_VERSION_PATCH 0
 
 // Includes
 #include "Calibration.h"

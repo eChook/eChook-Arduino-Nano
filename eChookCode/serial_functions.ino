@@ -154,22 +154,20 @@ void sendBTName() {
 
 /**
  * @brief Sends the current firmware version over Serial.
- * Packet format: [v<version>]
+ * Packet format: [v<version>], where <version> is five characters of
+ * zero-padded "major.minor".
+ *
+ * The five character field has no room for the patch component, and V1
+ * consumers have only ever been shown major.minor, so the format is kept
+ * byte-identical here. The V2 packet carries the full three-part version.
  */
 void sendVersion() {
   const uint8_t sendArrayLength = 5 + 3;
   char sendArr[sendArrayLength] = {};
-  char version[5] = {'0'};
 
-  dtostrf(CODE_VERSION, 5, 2, version);
-  // Add padding 0 to start of array if needed
-  if (CODE_VERSION < 10) {
-    version[0] = '0';
-  }
-
-  for (uint8_t i = 0; i < sendArrayLength - 3; i++) {
-    sendArr[i + 2] = version[i];
-  }
+  // Writes five characters plus a terminator, so it must run before the end
+  // indicator below is placed in the final byte.
+  snprintf(sendArr + 2, 6, "%02d.%02d", CODE_VERSION_MAJOR, CODE_VERSION_MINOR);
 
   sendArr[0] = '[';                   // Packet Start Indicator
   sendArr[1] = 'v';                   // Version Array Identifier
@@ -317,24 +315,26 @@ void sendNack(uint8_t type) {
   sendV25Packet(PKT_NACK, data, 1);
 }
 
+/**
+ * @brief Sends the current firmware version and board type as a V2 packet.
+ *
+ * Payload is four raw bytes: major, minor, patch, board type. Sending the
+ * components as numbers rather than as formatted text means the patch level
+ * reaches the configurator and version comparisons need no string parsing.
+ */
 void sendV25Version() {
-  uint8_t data[6];
-  char version[5] = {'0'};
-  dtostrf(CODE_VERSION, 5, 2, version);
-  if (CODE_VERSION < 10) {
-    version[0] = '0';
-  }
-  for (int i = 0; i < 5; i++) {
-    data[i] = version[i];
-  }
+  uint8_t data[4];
+  data[0] = CODE_VERSION_MAJOR;
+  data[1] = CODE_VERSION_MINOR;
+  data[2] = CODE_VERSION_PATCH;
 
 #if defined(__AVR_ATmega4809__)
-  data[5] = 1; // Nano Every
+  data[3] = 1; // Nano Every
 #else
-  data[5] = 0; // Standard Nano
+  data[3] = 0; // Standard Nano
 #endif
 
-  sendV25Packet(PKT_VERSION_RESP, data, 6);
+  sendV25Packet(PKT_VERSION_RESP, data, 4);
 }
 
 void sendV25FloatCal() {

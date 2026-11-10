@@ -393,7 +393,7 @@ void getBTName()
     for (uint8_t i = 0; i < 30; i++)
     {
         char tmpChar = getNameByte(i);
-        if (tmpChar != 0xff)
+        if (tmpChar != (char)0xff && tmpChar != '\0') // char is signed on AVR, so compare against (char)0xff
             temp += tmpChar;
     }
     CAL_BT_NAME = temp;

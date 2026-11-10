@@ -144,7 +144,7 @@ void receiveBTName() {
   if (receivedCount == 30) {
     String temp = "";
     for (uint8_t i = 0; i < 30; i++) {
-      if (inBuff[i] != 0xff) {
+      if (inBuff[i] != (char)0xff && inBuff[i] != '\0') { // char is signed on AVR, so compare against (char)0xff
         temp += inBuff[i];
       }
     }

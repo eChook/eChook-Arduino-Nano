@@ -1,8 +1,9 @@
 // This file holds all functions relating to saving and reading settings and calibrations from the Arduino's EEPROM memory.
 
 //  The saved data is broken into a few parts:
-//  - First byte [0] of EEPROM set to 0xAA to indicate EEPROM data is valid, anything else will result in eeprom being overwritten
-//    with default settings.
+//  - First byte [0] of EEPROM is a marker: 0xAB means the data below is protected by the checksum in byte [124].
+//    0xAA is the older layout with no checksum (v2.5 beta), which is upgraded in place. Anything else means
+//    the EEPROM is overwritten with default settings.
 //  - 4 Chars used for binary settings - eg. feature enable/disable.
 //  - An array of floats for the numerical calibrations values. (OK, not really an array, just a series of 20 floats, but thinking of it as an array may help)
 //  - A 20 char array to hold the name for the Bluetooth device.
@@ -54,8 +55,9 @@
 // Code:
 #include <EEPROM.h>
 
-#define EEPROM_USED_SIZE 125 // Total bytes used for config, floats, BT name, etc.
-#define CHECKSUM_BYTE 0      // Store checksum in EEPROM[0]
+#define CHECKSUM_BYTE 124       // Sum of bytes 1-123, see calculateEEPROMChecksum()
+#define MARKER_CHECKSUMMED 0xAB // Byte 0 value: settings protected by the checksum
+#define MARKER_LEGACY 0xAA      // Byte 0 value: older layout with no checksum (v2.5 beta)
 
 // Calibration Bit Definitions:
 // Reading bits in bytes requires some binary logic
@@ -112,17 +114,25 @@ void EEPROMSetup()
 
     if (!FORCE_USE_HARDCODED_CAL)
     {
-        // First check if EEPROM is valid by reading the validity Byte [0]
-        if (getVerificationByte())
+        uint8_t marker = EEPROM.read(VERIFICATION_BYTE);
+        if (marker == MARKER_CHECKSUMMED && verifyEEPROMChecksum())
         {
-            // EEPROM contains valid data
-            // Set calibration values from EEPROM
             loadEepromCalibration();
+            printEEPROMStatus(F("EEPROM checksum OK - settings loaded"));
+        }
+        else if (marker == MARKER_LEGACY)
+        {
+            // Saved without a checksum by v2.5 beta: keep the settings and add one.
+            // Checksum goes in before the marker, so a power cut here just repeats the upgrade.
+            writeEEPROMChecksum();
+            EEPROM.write(VERIFICATION_BYTE, MARKER_CHECKSUMMED);
+            loadEepromCalibration();
+            printEEPROMStatus(F("EEPROM checksum added - settings loaded"));
         }
         else
         {
-            // Fresh arduino, need to initialise EEPROM
             saveCurrCalToEeprom();
+            printEEPROMStatus(F("EEPROM checksum bad - resetting to defaults"));
         }
     }
 }
@@ -134,11 +144,8 @@ void EEPROMSetup()
 void saveCurrCalToEeprom()
 {
 
-    // Check and Set Verification Byte
-    if (!getVerificationByte())
-    {
-        setVerificationByte();
-    }
+    // Invalidate first and mark valid last, so a power cut mid-save resets to defaults next boot.
+    clearVerificationByte();
 
     // Set Binary Cals:
     setBinaryCal(CAL_A, A_EEPROM_ENABLE, CAL_USE_EEPROM);
@@ -171,6 +178,7 @@ void saveCurrCalToEeprom()
 
     writeBTName();
     writeEEPROMChecksum();
+    EEPROM.write(VERIFICATION_BYTE, MARKER_CHECKSUMMED);
 }
 
 /**
@@ -209,6 +217,7 @@ void loadEepromCalibration()
     if(CAL_INTERNAL_REFERENCE_VOLTAGE == 0 || CAL_INTERNAL_REFERENCE_VOLTAGE == 0xFF ){
       CAL_INTERNAL_REFERENCE_VOLTAGE = 1.1;
       setFloatCal(INDEX_INTERNAL_REFERENCE_VOLTAGE, (float)CAL_INTERNAL_REFERENCE_VOLTAGE);
+      writeEEPROMChecksum();
     }
 
     getBTName();
@@ -333,29 +342,11 @@ byte getNameByte(uint8_t index)
 }
 
 /**
- * @brief Checks if the verification byte in EEPROM is set to 0xAA.
- * @return 1 if verification byte is 0xAA, 0 otherwise.
- */
-uint8_t getVerificationByte()
-{
-    byte temp = EEPROM.read(0);
-    return temp == 0xAA;
-}
-
-/**
- * @brief Sets the verification byte in EEPROM to 0xAA.
- */
-void setVerificationByte()
-{
-    EEPROM.write(0, 0xAA);
-}
-
-/**
  * @brief Clears the verification byte in EEPROM (sets to 0xFF).
  */
 void clearVerificationByte()
 {
-    EEPROM.write(0, 0xFF);
+    EEPROM.write(VERIFICATION_BYTE, 0xFF);
 }
 
 /**
@@ -400,24 +391,23 @@ void getBTName()
 }
 
 /**
- * @brief Calculates a very simple 8-bit checksum (sum of all bytes) over EEPROM data.
- * Excludes the checksum byte itself (EEPROM[0]).
+ * @brief Calculates an 8-bit checksum (sum of all bytes) over the settings, bytes 1 to 123.
+ * Excludes the marker byte [0] and the checksum byte itself.
  * @return The calculated checksum.
  */
 uint8_t calculateEEPROMChecksum() {
     uint8_t checksum = 0;
-    for (uint8_t i = 1; i < EEPROM_USED_SIZE; i++) { // Start from 1, skip checksum byte
+    for (uint8_t i = 1; i < CHECKSUM_BYTE; i++) {
         checksum += EEPROM.read(i);
     }
     return checksum;
 }
 
 /**
- * @brief Writes the checksum to EEPROM[0].
+ * @brief Writes the checksum to EEPROM[CHECKSUM_BYTE]. Call after every settings write.
  */
 void writeEEPROMChecksum() {
-    uint8_t checksum = calculateEEPROMChecksum();
-    EEPROM.write(CHECKSUM_BYTE, checksum);
+    EEPROM.update(CHECKSUM_BYTE, calculateEEPROMChecksum());
 }
 
 /**
@@ -428,4 +418,15 @@ bool verifyEEPROMChecksum() {
     uint8_t stored = EEPROM.read(CHECKSUM_BYTE);
     uint8_t calculated = calculateEEPROMChecksum();
     return stored == calculated;
+}
+
+/**
+ * @brief Prints a one line EEPROM status at startup. Only the Nano Every has a spare serial port for this.
+ */
+void printEEPROMStatus(const __FlashStringHelper *msg) {
+#ifdef NANO_EVERY
+    Serial.println(msg);
+#else
+    (void)msg;
+#endif
 }

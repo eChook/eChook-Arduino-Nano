@@ -152,6 +152,7 @@ void receiveBTName() {
     CAL_BT_NAME = temp;
 
     writeBTName();            // Writes the new name to EEPROM
+    writeEEPROMChecksum();
     loadEepromCalibration();  // Reloads dynamic calibration from EEPROM
     sendBTName();             // Sends out eeprom contents
   }
@@ -175,6 +176,7 @@ void receiveFloatCal() {
 
   if (receivedCount == 80) {
     EEPROM.put(FLOAT_ARRAY_START, inBuff);
+    writeEEPROMChecksum();
 
     loadEepromCalibration();  // Reloads dynamic calibration from EEPROM
     sendFloatCal();           // Sends out eeprom contents
@@ -199,6 +201,7 @@ void receiveBinaryCal() {
 
   if (receivedCount == 4) {
     EEPROM.put(CAL_A, inBuff);
+    writeEEPROMChecksum();
 
     loadEepromCalibration();  // Reloads dynamic calibration from EEPROM
     sendBinaryCal();          // Sends out eeprom contentss
@@ -207,5 +210,9 @@ void receiveBinaryCal() {
 
 // Reset Arduino
 void resetArduino() {
+#ifdef NANO_EVERY
+  _PROTECTED_WRITE(RSTCTRL.SWRR, RSTCTRL_SWRE_bm); // No bootloader at 0x7800 on the 4809, use a real software reset
+#else
   asm volatile("jmp 0x7800");
+#endif
 }

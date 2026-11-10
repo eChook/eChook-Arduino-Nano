@@ -224,6 +224,7 @@ void receiveBTName() {
     }
 
     writeBTName();           // Writes the new name to EEPROM
+    writeEEPROMChecksum();
     loadEepromCalibration(); // Reloads dynamic calibration from EEPROM
     sendBTName();            // Sends out eeprom contents
   }
@@ -250,6 +251,7 @@ void receiveFloatCal() {
 
   if (receivedCount == 80) {
     EEPROM.put(FLOAT_ARRAY_START, inBuff);
+    writeEEPROMChecksum();
 
     loadEepromCalibration(); // Reloads dynamic calibration from EEPROM
     sendFloatCal();          // Sends out eeprom contents
@@ -277,6 +279,7 @@ void receiveBinaryCal() {
 
   if (receivedCount == 4) {
     EEPROM.put(CAL_A, inBuff);
+    writeEEPROMChecksum();
 
     loadEepromCalibration(); // Reloads dynamic calibration from EEPROM
     sendBinaryCal();         // Sends out eeprom contentss
@@ -287,7 +290,13 @@ void receiveBinaryCal() {
  * @brief Resets the Arduino by jumping to the bootloader address.
  * @note This is a hard reset using assembly.
  */
-void resetArduino() { asm volatile("jmp 0x7800"); }
+void resetArduino() {
+#if defined(__AVR_ATmega4809__)
+  _PROTECTED_WRITE(RSTCTRL.SWRR, RSTCTRL_SWRE_bm); // No bootloader at 0x7800 on the 4809, use a real software reset
+#else
+  asm volatile("jmp 0x7800");
+#endif
+}
 
 // --- V2+ Protocol Implementation ---
 
@@ -427,6 +436,7 @@ void receiveV25Packet() {
   case PKT_FLOAT_SET:
     if (len == 80) {
       EEPROM.put(FLOAT_ARRAY_START, data);
+      writeEEPROMChecksum();
       loadEepromCalibration();
       sendAck(type);
     } else {
@@ -436,6 +446,7 @@ void receiveV25Packet() {
   case PKT_BIN_SET:
     if (len == 4) {
       EEPROM.put(CAL_A, data);
+      writeEEPROMChecksum();
       loadEepromCalibration();
       sendAck(type);
     } else {
@@ -451,6 +462,7 @@ void receiveV25Packet() {
     }
     CAL_BT_NAME[outIdx] = '\0';
     writeBTName();
+    writeEEPROMChecksum();
     loadEepromCalibration();
     sendAck(type);
   } break;

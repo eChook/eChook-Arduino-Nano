@@ -42,15 +42,14 @@ void eChookSetup() {
   Serial.println(CODE_VERSION);
 #endif
 
+  // Read in calibration from EEPROM memory if required. Must come before
+  // configureBluetooth(), which programs the HC-05 with the saved name.
+  EEPROMSetup();
+
   configureBluetooth();  // Checks if If AT mode is set and configures HC-05 according to the BT_xxx constants defined above
 
 
   SerialA.begin(CAL_BT_BAUDRATE);  // Nano Clone - Bluetooth and USB communications, Nano Every - BT Only.
-
-
-
-  // Read in calibration from EEPROM memory if required
-  EEPROMSetup();
 
   referenceVoltage = updateReferenceVoltage();
 

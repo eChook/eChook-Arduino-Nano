@@ -80,9 +80,9 @@ extern int CAL_THROTTLE_VARIABLE; // 1 for a variable throttle, 0 for a push but
 /** @brief Enable/Disable throttle ramp-up logic. */
 extern int CAL_THROTTLE_RAMP; // 1 to enable. A simple implementation of a throttle ramp up
 /** @brief Low throttle voltage threshold (below this is 0%). */
-extern int CAL_THROTTLE_LOW; // This voltage and below is regarded as 0% throttle
+extern float CAL_THROTTLE_LOW; // This voltage and below is regarded as 0% throttle
 /** @brief High throttle voltage threshold (above this is 100%). */
-extern int CAL_THROTTLE_HIGH; // This voltage and above is regarded as 100% throttle
+extern float CAL_THROTTLE_HIGH; // This voltage and above is regarded as 100% throttle
 
 // _______________________________________________________________
 // Experimental Area!!

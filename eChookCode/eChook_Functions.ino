@@ -48,14 +48,15 @@ void eChookSetup() {
 
   hardwareSerialSetup();
 
+  // Read in calibration from EEPROM memory if required. Must come before
+  // configureBluetooth(), which programs the HC-05 with the saved name.
+  EEPROMSetup();
+
   configureBluetooth(); // Checks if If AT mode is set and configures HC-05
                         // according to the BT_xxx constants defined above
 
   SerialA.begin(CAL_BT_BAUDRATE); // Nano Clone - Bluetooth and USB
                                   // communications, Nano Every - BT Only.
-
-  // Read in calibration from EEPROM memory if required
-  EEPROMSetup();
 
   referenceVoltage = updateReferenceVoltage();
 
@@ -343,7 +344,7 @@ float readThrottle() {
       tempThrottle = CAL_THROTTLE_HIGH;
     }
 
-    tempThrottle = ((tempThrottle - CAL_THROTTLE_LOW) / (float)(CAL_THROTTLE_HIGH - CAL_THROTTLE_LOW)) * (255);
+    tempThrottle = ((tempThrottle - CAL_THROTTLE_LOW) / (CAL_THROTTLE_HIGH - CAL_THROTTLE_LOW)) * (255);
   } else {
     throttleV = adcToPinVoltage(rawThrottle); // Update Global variable for throttleOutput in voltage
     if (rawThrottle > 200)                    // Approx 1v
@@ -678,15 +679,7 @@ void sendData(char identifier, float value) {
       dataByte2 = (byte)tens;
     }
     // Send the data in the format { [id] [1] [2] }
-#ifdef NANO_EVERY
-    if (inConfig) {
-      Serial.write(123);
-      Serial.write(identifier);
-      Serial.write(dataByte1);
-      Serial.write(dataByte2);
-      Serial.write(125);
-    }
-#endif
+    hardwareSerialWriteConfig(identifier, dataByte1, dataByte2); // Nano Every: copy to USB in config mode
     SerialA.write(123);
     SerialA.write(identifier);
     SerialA.write(dataByte1);
@@ -722,15 +715,7 @@ void sendData(char identifier, int value) {
       dataByte1 += 128; // sets MSB High to indicate Integer value
       dataByte2 = (byte)tens;
     }
-#ifdef NANO_EVERY
-    if (inConfig) {
-      Serial.write(123);
-      Serial.write(identifier);
-      Serial.write(dataByte1);
-      Serial.write(dataByte2);
-      Serial.write(125);
-    }
-#endif
+    hardwareSerialWriteConfig(identifier, dataByte1, dataByte2); // Nano Every: copy to USB in config mode
     SerialA.write(123);
     SerialA.write(identifier);
     SerialA.write(dataByte1);
@@ -906,12 +891,16 @@ void configureBluetooth() {
     hardwareSerialPrintln(response);
   }
 
+  // Release AT mode whether or not every step worked. Left high after a failed
+  // step, the module restarts into AT mode on each reset below and the loop
+  // never exits.
+#ifdef JUMPER_BT_EN
+  digitalWrite(BT_EN_PIN, LOW);
+#endif
+
   // Check all operations completed successfully
   if (btBaudSet && btNameSet && btPassSet) {
     flushSerial();
-#ifdef JUMPER_BT_EN
-    digitalWrite(BT_EN_PIN, LOW);
-#endif
     hardwareSerialPrintln(F("HC-05 Configuration Successful, Resetting..."));
     delay(100);
     SerialA.println(F("AT+RESET\r\n")); // has to be in the middle to provide a

@@ -195,12 +195,23 @@ void loadEepromCalibration()
     CAL_USE_IMPROVED_RPM_CALCULATION = readBinaryCal(CAL_D, D_RPM_NEW);
     CAL_USE_IMPROVED_SPEED_CALCULATION = readBinaryCal(CAL_D, D_SPEED_NEW); // Will work best with one magnet on the wheel
 
-    CAL_DATA_TRANSMIT_INTERVAL = (unsigned long)getFloatCal(INDEX_TRANSMIT_INTERVAL);
-    CAL_WHEEL_MAGNETS = (int)getFloatCal(INDEX_WHEEL_MAGNETS);
-    CAL_MOTOR_MAGNETS = (int)getFloatCal(INDEX_MOTOR_MAGNETS);
-    CAL_WHEEL_CIRCUMFERENCE = getFloatCal(INDEX_WHEEL_CIRCUMFERENCE);
+    // Settings that the throttle and timing depend on are only taken when they make
+    // sense; otherwise the current value (the default at boot, or the last good
+    // value) is kept. NaN fails every comparison, so corrupt bytes are rejected too.
+    float value = getFloatCal(INDEX_TRANSMIT_INTERVAL);
+    if (value >= 10 && value <= 10000)
+      CAL_DATA_TRANSMIT_INTERVAL = (unsigned long)value;
+    value = getFloatCal(INDEX_WHEEL_MAGNETS);
+    if (value >= 0 && value <= 100)
+      CAL_WHEEL_MAGNETS = (int)value;
+    value = getFloatCal(INDEX_MOTOR_MAGNETS);
+    if (value >= 0 && value <= 100)
+      CAL_MOTOR_MAGNETS = (int)value;
+    value = getFloatCal(INDEX_WHEEL_CIRCUMFERENCE);
+    if (value > 0 && value < 10)
+      CAL_WHEEL_CIRCUMFERENCE = value;
+
     CAL_REFERENCE_VOLTAGE = getFloatCal(INDEX_REF_VOLTAGE);
-    CAL_INTERNAL_REFERENCE_VOLTAGE = getFloatCal(INDEX_INTERNAL_REFERENCE_VOLTAGE);
     CAL_BATTERY_TOTAL = getFloatCal(INDEX_24_VOLTAGE);
     CAL_BATTERY_LOWER = getFloatCal(INDEX_12_VOLTAGE);
     CAL_CURRENT = getFloatCal(INDEX_CURRENT);
@@ -210,11 +221,19 @@ void loadEepromCalibration()
     CAL_THERM2_A = getFloatCal(INDEX_TEMP_2_A);
     CAL_THERM2_B = getFloatCal(INDEX_TEMP_2_B);
     CAL_THERM2_C = getFloatCal(INDEX_TEMP_2_C);
-    CAL_THROTTLE_LOW = (int)getFloatCal(INDEX_THROTTLE_LOW);
-    CAL_THROTTLE_HIGH = (int)getFloatCal(INDEX_THROTTLE_HIGH);
+    // Checked as a pair: LOW must sit below HIGH, or the throttle maths divides by zero.
+    float throttleLow = getFloatCal(INDEX_THROTTLE_LOW);
+    float throttleHigh = getFloatCal(INDEX_THROTTLE_HIGH);
+    if (throttleLow >= 0 && throttleHigh > throttleLow && throttleHigh <= 6) {
+      CAL_THROTTLE_LOW = throttleLow;
+      CAL_THROTTLE_HIGH = throttleHigh;
+    }
 
-    // Catch function for Int Ref Voltage on firmware upgrade
-    if(CAL_INTERNAL_REFERENCE_VOLTAGE == 0 || CAL_INTERNAL_REFERENCE_VOLTAGE == 0xFF ){
+    // Default the internal reference if missing or implausible (the 1.1V bandgap is +/-10%)
+    value = getFloatCal(INDEX_INTERNAL_REFERENCE_VOLTAGE);
+    if (value >= 0.9 && value <= 1.3) {
+      CAL_INTERNAL_REFERENCE_VOLTAGE = value;
+    } else {
       CAL_INTERNAL_REFERENCE_VOLTAGE = 1.1;
       setFloatCal(INDEX_INTERNAL_REFERENCE_VOLTAGE, (float)CAL_INTERNAL_REFERENCE_VOLTAGE);
       writeEEPROMChecksum();

@@ -42,15 +42,14 @@ void eChookSetup() {
   Serial.println(CODE_VERSION);
 #endif
 
+  // Read in calibration from EEPROM memory if required. Must come before
+  // configureBluetooth(), which programs the HC-05 with the saved name.
+  EEPROMSetup();
+
   configureBluetooth();  // Checks if If AT mode is set and configures HC-05 according to the BT_xxx constants defined above
 
 
   SerialA.begin(CAL_BT_BAUDRATE);  // Nano Clone - Bluetooth and USB communications, Nano Every - BT Only.
-
-
-
-  // Read in calibration from EEPROM memory if required
-  EEPROMSetup();
 
   referenceVoltage = updateReferenceVoltage();
 
@@ -334,7 +333,7 @@ float readThrottle() {
       tempThrottle = CAL_THROTTLE_HIGH;
     }
 
-    tempThrottle = ((tempThrottle - CAL_THROTTLE_LOW) / (float)(CAL_THROTTLE_HIGH - CAL_THROTTLE_LOW)) * (255);
+    tempThrottle = ((tempThrottle - CAL_THROTTLE_LOW) / (CAL_THROTTLE_HIGH - CAL_THROTTLE_LOW)) * (255);
   } else {
     throttleV = (tempThrottle / 1023) * referenceVoltage;  // Update Global variable for throttleOutput in voltage
     if (tempThrottle > 200)                                // Approx 1v
@@ -920,12 +919,16 @@ void configureBluetooth() {
   }
 
 
+  // Release AT mode whether or not every step worked. Left high after a failed
+  // step, the module restarts into AT mode on each reset below and the loop
+  // never exits.
+#ifdef JUMPER_BT_EN
+  digitalWrite(BT_EN_PIN, LOW);
+#endif
+
   // Check all operations completed successfully
   if (btBaudSet && btNameSet && btPassSet) {
     flushSerial();
-#ifdef JUMPER_BT_EN
-    digitalWrite(BT_EN_PIN, LOW);
-#endif
 #ifdef NANO_EVERY
     Serial.println(F("HC-05 Configuration Successful, Resetting..."));
 #endif

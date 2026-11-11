@@ -50,8 +50,8 @@ float CAL_THERM2_C = 0.0000007954800125;
 int CAL_THROTTLE_OUTPUT_EN = 1;
 int CAL_THROTTLE_VARIABLE = 1; // 1 for a variable throttle, 0 for a push button (on/off) throttle.
 int CAL_THROTTLE_RAMP = 0; // 1 to enable. A simple implementation of a throttle ramp up
-int CAL_THROTTLE_LOW = 1; // This voltage and below is regarded as 0% throttle
-int CAL_THROTTLE_HIGH = 4; // This voltage and above is regarded as 100% throttle
+float CAL_THROTTLE_LOW = 1; // This voltage and below is regarded as 0% throttle
+float CAL_THROTTLE_HIGH = 4; // This voltage and above is regarded as 100% throttle
 
 // _______________________________________________________________
 // Experimental Area!!
